@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block title %}Sign In - Apsara Premium{% endblock %}
+
+{% block content %}
+<div class="flex-center" style="min-height: 80vh;">
+    <div class="card" style="width: 100%; max-width: 450px;">
+        <div style="text-align: center; margin-bottom: 2rem;">
+            <h2 style="font-size: 2rem; margin-bottom: 0.5rem;">Welcome Back</h2>
+            <p style="color: var(--text-muted);">Access your premium Apsara tools</p>
+        </div>
+
+        <!-- Toggle (Tabs) -->
+        <div style="display: flex; margin-bottom: 2rem; border-bottom: 1px solid rgba(255,255,255,0.1);">
+            <button onclick="switchTab('login')" id="tab-login" class="btn"
+                style="flex: 1; border-radius: 0; border-bottom: 2px solid var(--primary-gold); Color: var(--primary-gold); background: transparent;">Login</button>
+            <button onclick="switchTab('register')" id="tab-register" class="btn"
+                style="flex: 1; border-radius: 0; border-bottom: 2px solid transparent; color: var(--text-muted); background: transparent;">Register</button>
+        </div>
+
+        <!-- Login Form -->
+        <div id="login-form">
+            <!-- Telegram Login -->
+            <div style="text-align: center; margin-bottom: 2rem; position: relative; z-index: 100;">
+                <p style="margin-bottom: 1rem; color: var(--text-muted);">Quick access with Telegram</p>
+                {% if bot_username %}
+                <script async src="https://telegram.org/js/telegram-widget.js?22"
+                    data-telegram-login="{{ bot_username }}" data-size="large" data-radius="10"
+                    data-auth-url="/auth/telegram/callback" data-request-access="write"></script>
+                {% else %}
+                <p style="color: var(--secondary-red); font-size: 0.9em;">(Bot not configured)</p>
+                {% endif %}
+            </div>
+
+            <div style="text-align: center; margin: 1rem 0; color: var(--text-muted);">OR</div>
+
+            <form action="/auth/login" method="POST">
+                <div class="form-group">
+                    <label class="form-label">Email</label>
+                    <input type="email" name="username" class="form-input" required placeholder="Enter your email">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Password</label>
+                    <input type="password" name="password" class="form-input" required
+                        placeholder="Enter your password">
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Sign In</button>
+            </form>
+        </div>
+
+        <!-- Register Form -->
+        <div id="register-form" style="display: none;">
+            <form action="/auth/register" method="POST">
+                <div class="form-group">
+                    <label class="form-label">Full Name</label>
+                    <input type="text" name="full_name" class="form-input" required placeholder="Your Name">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Email</label>
+                    <input type="email" name="email" class="form-input" required placeholder="Enter your email">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Password</label>
+                    <input type="password" name="password" class="form-input" required placeholder="Choose a password">
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Create Account</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    function switchTab(tab) {
+        if (tab === 'login') {
+            document.getElementById('login-form').style.display = 'block';
+            document.getElementById('register-form').style.display = 'none';
+            document.getElementById('tab-login').style.borderBottomColor = 'var(--primary-gold)';
+            document.getElementById('tab-login').style.color = 'var(--primary-gold)';
+            document.getElementById('tab-register').style.borderBottomColor = 'transparent';
+            document.getElementById('tab-register').style.color = 'var(--text-muted)';
+        } else {
+            document.getElementById('login-form').style.display = 'none';
+            document.getElementById('register-form').style.display = 'block';
+            document.getElementById('tab-login').style.borderBottomColor = 'transparent';
+            document.getElementById('tab-login').style.color = 'var(--text-muted)';
+            document.getElementById('tab-register').style.borderBottomColor = 'var(--primary-gold)';
+            document.getElementById('tab-register').style.color = 'var(--primary-gold)';
+        }
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div style="text-align: center; margin-bottom: 4rem; padding-top: 2rem;">
+    <h1
+        style="font-size: 3.5rem; margin-bottom: 1rem; background: var(--gold-gradient); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;">
+        The Ultimate Telegram Toolkit
+    </h1>
+    <p style="font-size: 1.2rem; color: var(--text-muted); max-width: 600px; margin: 0 auto 2rem;">
+        Empower your Telegram experience with premium tools for management, automation, and content.
+        Designed with the elegance of Khmer Apsara.
+    </p>
+    {% if not user %}
+    <a href="/login" class="btn btn-primary" style="font-size: 1.1rem; padding: 1rem 3rem;">Get Started</a>
+    {% else %}
+    <a href="/profile" class="btn btn-primary" style="font-size: 1.1rem; padding: 1rem 3rem;">Go to Dashboard</a>
+    {% endif %}
+</div>
+
+<!-- Features Grid -->
+<div class="grid-cols-2" style="gap: 2rem;">
+    <!-- Feature 1 -->
+    <div class="card animate-float" style="animation-delay: 0s;">
+        <h3 style="margin-bottom: 1rem;">Video Downloader</h3>
+        <p style="color: var(--text-muted); margin-bottom: 1.5rem;">
+            Download high-quality videos directly from Telegram channels and groups. Fast, secure, and easy to use.
+        </p>
+        <a href="/tools" class="btn btn-outline" style="width: 100%; display: block; text-align: center;">Downloader
+            Tool</a>
+    </div>
+
+    <!-- Feature 2 -->
+    <div class="card animate-float" style="animation-delay: 1s;">
+        <h3 style="margin-bottom: 1rem;">Member Scraper</h3>
+        <p style="color: var(--text-muted); margin-bottom: 1.5rem;">
+            Export active members from groups to CSV. Filter by activity and manage your community growth.
+        </p>
+        <a href="/tools" class="btn btn-outline" style="width: 100%; display: block; text-align: center;">Scraper
+            Tool</a>
+    </div>
+
+    <!-- Feature 3 -->
+    <div class="card animate-float" style="animation-delay: 2s;">
+        <h3 style="margin-bottom: 1rem;">Auto-Add Members</h3>
+        <p style="color: var(--text-muted); margin-bottom: 1.5rem;">
+            Automatically add members to your channel or group from your scraped lists.
+        </p>
+        <a href="/tools" class="btn btn-outline" style="width: 100%; display: block; text-align: center;">Add Members
+            Tool</a>
+    </div>
+
+    <!-- Feature 4 -->
+    <div class="card animate-float" style="animation-delay: 3s;">
+        <h3 style="margin-bottom: 1rem;">Premium Analytics</h3>
+        <p style="color: var(--text-muted); margin-bottom: 1.5rem;">
+            Track your growth, download history, and automation success rates in one dashboard.
+        </p>
+        <a href="/analytics" class="btn btn-outline" style="width: 100%; display: block; text-align: center;">View
+            Analytics</a>
+    </div>
+</div>
+{% endblock %}

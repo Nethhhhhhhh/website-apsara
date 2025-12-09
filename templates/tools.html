@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+
+{% block title %}Tools - Apsara Premium{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 900px;">
+    <h1 style="margin-bottom: 2rem; text-align: center;">Premium Tools</h1>
+
+    <!-- Tool Tabs -->
+    <div style="display: flex; gap: 1rem; margin-bottom: 2rem; justify-content: center;">
+        <button onclick="openTool('scraper')" id="btn-scraper" class="btn btn-primary">Member Scraper</button>
+        <button onclick="openTool('adder')" id="btn-adder" class="btn btn-outline">Add Members</button>
+        <button onclick="openTool('downloader')" id="btn-downloader" class="btn btn-outline">Video Downloader</button>
+    </div>
+
+    <!-- Scraper Tool -->
+    <div id="tool-scraper" class="card">
+        <h2 style="margin-bottom: 1rem;">Member Scraper</h2>
+        <p style="color: var(--text-muted); margin-bottom: 1.5rem;">scrape members from a public group to CSV.</p>
+        <form action="/api/tools/scrape" method="POST">
+            <div class="form-group">
+                <label class="form-label">Target Group Username</label>
+                <input type="text" name="target_group" class="form-input" placeholder="@groupname" required>
+            </div>
+            <button type="submit" class="btn btn-primary" style="width: 100%;">Start Scraping</button>
+        </form>
+    </div>
+
+    <!-- Add Members Tool -->
+    <div id="tool-adder" class="card" style="display: none;">
+        <h2 style="margin-bottom: 1rem;">Add Members</h2>
+        <p style="color: var(--text-muted); margin-bottom: 1.5rem;">Add scraped members to your channel.</p>
+        <form action="/api/tools/add" method="POST">
+            <div class="grid-cols-2" style="gap: 1rem;">
+                <div class="form-group">
+                    <label class="form-label">Target Channel</label>
+                    <input type="text" name="target_channel" class="form-input" placeholder="@channelname" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Start Index</label>
+                    <input type="number" name="start_index" class="form-input" value="1">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">End Index</label>
+                    <input type="number" name="end_index" class="form-input" value="50">
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary" style="width: 100%;">Start Adding</button>
+        </form>
+    </div>
+
+    <!-- Downloader Tool -->
+    <div id="tool-downloader" class="card" style="display: none;">
+        <h2 style="margin-bottom: 1rem;">Video Downloader</h2>
+        <p style="color: var(--text-muted); margin-bottom: 1.5rem;">Download media from public or private Telegram
+            links.</p>
+        <p style="font-size: 0.9em; color: var(--text-muted); margin-bottom: 1rem;">
+            Format: Public <code>https://t.me/username/123</code> or Private <code>https://t.me/c/12345/123</code>
+        </p>
+        <form id="downloader-form" onsubmit="handleDownload(event)">
+            <div class="form-group">
+                <label class="form-label">Telegram Link</label>
+                <input type="text" name="link" class="form-input" placeholder="https://t.me/..." required>
+            </div>
+            <button type="submit" id="download-btn" class="btn btn-primary" style="width: 100%;">Download Video</button>
+        </form>
+
+        <!-- Progress / Status Area -->
+        <div id="status-area" style="margin-top: 1.5rem; display: none;">
+            <p id="status-text" style="margin-bottom: 0.5rem; text-align: center;">Processing...</p>
+            <div style="width: 100%; height: 6px; background: #333; border-radius: 3px; overflow: hidden;">
+                <div id="progress-bar"
+                    style="width: 0%; height: 100%; background: var(--gold-gradient); transition: width 0.3s;"></div>
+            </div>
+        </div>
+
+        <!-- Result Area -->
+        <div style="margin-top: 2rem; display: none;" id="preview-area">
+            <h3>Download Complete</h3>
+            <div
+                style="width: 100%; background: #000; display: flex; align-items: center; justify-content: center; margin-top: 1rem; border-radius: 8px; overflow: hidden;">
+                <video id="video-player" controls style="width: 100%; max-height: 400px; display: none;"></video>
+            </div>
+            <a id="download-link" href="#" class="btn btn-primary"
+                style="margin-top: 1rem; width: 100%; text-align: center; display: block;" download>Recursive
+                Download</a>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    function openTool(toolName) {
+        // Hide all
+        document.getElementById('tool-scraper').style.display = 'none';
+        document.getElementById('tool-adder').style.display = 'none';
+        document.getElementById('tool-downloader').style.display = 'none';
+
+        // Reset buttons
+        document.getElementById('btn-scraper').className = 'btn btn-outline';
+        document.getElementById('btn-adder').className = 'btn btn-outline';
+        document.getElementById('btn-downloader').className = 'btn btn-outline';
+
+        // Show selected
+        document.getElementById('tool-' + toolName).style.display = 'block';
+        document.getElementById('btn-' + toolName).className = 'btn btn-primary';
+    }
+
+    async function handleDownload(event) {
+        event.preventDefault();
+        const form = event.target;
+        const formData = new FormData(form);
+        const submitBtn = document.getElementById('download-btn');
+        const statusArea = document.getElementById('status-area');
+        const statusText = document.getElementById('status-text');
+        const progressBar = document.getElementById('progress-bar');
+        const previewArea = document.getElementById('preview-area');
+        const videoPlayer = document.getElementById('video-player');
+        const downloadLink = document.getElementById('download-link');
+
+        // Reset UI
+        submitBtn.disabled = true;
+        submitBtn.innerText = "Downloading...";
+        statusArea.style.display = 'block';
+        previewArea.style.display = 'none';
+        progressBar.style.width = '30%'; // Fake progress start
+        statusText.innerText = "Connecting to Telegram...";
+
+        try {
+            const response = await fetch('/api/tools/download', {
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await response.json();
+
+            if (result.status === 'success') {
+                progressBar.style.width = '100%';
+                statusText.innerText = "Download Complete!";
+
+                // Show Video
+                previewArea.style.display = 'block';
+                videoPlayer.src = result.file_path;
+                videoPlayer.style.display = 'block';
+                downloadLink.href = result.file_path;
+            } else {
+                statusText.innerText = "Error: " + result.message;
+                progressBar.style.width = '0%';
+                progressBar.style.background = 'red';
+            }
+
+        } catch (error) {
+            console.error('Error:', error);
+            statusText.innerText = "Network Error Occurred.";
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerText = "Download Video";
+        }
+    }
+</script>
+{% endblock %}

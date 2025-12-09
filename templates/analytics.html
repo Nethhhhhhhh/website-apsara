@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+
+{% block title %}Premium Analytics - Apsara Premium{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-top: 2rem;">
+    <!-- Hero / Marketing Blurb -->
+    <div class="card" style="margin-bottom: 3rem; text-align: center; border-left: 4px solid var(--primary-gold);">
+        <h1
+            style="margin-bottom: 1rem; font-size: 2.5rem; background: var(--gold-gradient); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;">
+            Unlock the Full Potential
+        </h1>
+        <p style="color: var(--text-light); font-size: 1.1rem; line-height: 1.6; max-width: 800px; margin: 0 auto;">
+            Our all-in-one dashboard brings together your growth metrics, download history, and automation success rates
+            into a single, easy-to-use interface. Whether you’re tracking progress or optimizing performance, Premium
+            Analytics provides the clarity and insights you need to make smarter, faster decisions.
+        </p>
+    </div>
+
+    <!-- Quick Stats Grid -->
+    <div class="grid-cols-2" style="gap: 1.5rem; margin-bottom: 2rem;">
+        <div class="card animate-float" style="padding: 1.5rem; text-align: center;">
+            <p style="color: var(--text-muted); font-size: 0.9rem;">Total Downloads</p>
+            <h2 style="font-size: 2.5rem; margin-top: 0.5rem;">1,248</h2>
+            <span style="color: #4ade80; font-size: 0.8rem;">▲ 12% this week</span>
+        </div>
+        <div class="card animate-float" style="padding: 1.5rem; text-align: center; animation-delay: 0.2s;">
+            <p style="color: var(--text-muted); font-size: 0.9rem;">Automation Success Rate</p>
+            <h2 style="font-size: 2.5rem; margin-top: 0.5rem;">98.5%</h2>
+            <span style="color: var(--primary-gold); font-size: 0.8rem;">● Stable Performance</span>
+        </div>
+    </div>
+
+    <!-- Charts Section -->
+    <div class="grid-cols-2" style="gap: 2rem; margin-bottom: 3rem;">
+        <!-- Growth Chart -->
+        <div class="card">
+            <h3 style="margin-bottom: 1.5rem; font-size: 1.2rem;">Growth Monitoring</h3>
+            <canvas id="growthChart" height="200"></canvas>
+        </div>
+        <!-- Success Chart -->
+        <div class="card">
+            <h3 style="margin-bottom: 1.5rem; font-size: 1.2rem;">Automation Success</h3>
+            <div style="width: 70%; margin: 0 auto;">
+                <canvas id="successChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Download History Table -->
+    <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+            <h3>Recent Activity</h3>
+            <button class="btn btn-outline" style="font-size: 0.8rem; padding: 0.5rem 1rem;">Export Report</button>
+        </div>
+
+        <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; color: var(--text-light);">
+                <thead>
+                    <tr style="border-bottom: 1px solid rgba(255, 215, 0, 0.2); text-align: left;">
+                        <th style="padding: 1rem; color: var(--primary-gold);">Date</th>
+                        <th style="padding: 1rem; color: var(--primary-gold);">Action</th>
+                        <th style="padding: 1rem; color: var(--primary-gold);">File Type</th>
+                        <th style="padding: 1rem; color: var(--primary-gold);">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
+                        <td style="padding: 1rem;">Dec 09, 2025</td>
+                        <td style="padding: 1rem;">Video Download</td>
+                        <td style="padding: 1rem;">MP4 (HD)</td>
+                        <td style="padding: 1rem;"><span style="color: #4ade80;">Completed</span></td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
+                        <td style="padding: 1rem;">Dec 09, 2025</td>
+                        <td style="padding: 1rem;">Member Scrape</td>
+                        <td style="padding: 1rem;">CSV</td>
+                        <td style="padding: 1rem;"><span style="color: #4ade80;">Completed</span></td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
+                        <td style="padding: 1rem;">Dec 08, 2025</td>
+                        <td style="padding: 1rem;">Auto-Add</td>
+                        <td style="padding: 1rem;">-</td>
+                        <td style="padding: 1rem;"><span style="color: var(--secondary-red);">Failed</span></td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 1rem;">Dec 08, 2025</td>
+                        <td style="padding: 1rem;">Video Download</td>
+                        <td style="padding: 1rem;">MKV</td>
+                        <td style="padding: 1rem;"><span style="color: #4ade80;">Completed</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+    // Initialize Charts
+    const ctxGrowth = document.getElementById('growthChart').getContext('2d');
+    const ctxSuccess = document.getElementById('successChart').getContext('2d');
+
+    // Gradient for Line Chart
+    let gradient = ctxGrowth.createLinearGradient(0, 0, 0, 400);
+    gradient.addColorStop(0, 'rgba(255, 215, 0, 0.4)');
+    gradient.addColorStop(1, 'rgba(255, 215, 0, 0.0)');
+
+    new Chart(ctxGrowth, {
+        type: 'line',
+        data: {
+            labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+            datasets: [{
+                label: 'Downloads',
+                data: [12, 19, 15, 25, 22, 30, 45],
+                borderColor: '#FFD700',
+                backgroundColor: gradient,
+                borderWidth: 2,
+                fill: true,
+                tension: 0.4,
+                pointBackgroundColor: '#FFF',
+                pointBorderColor: '#FFD700'
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                y: {
+                    grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                    ticks: { color: '#94A3B8' }
+                },
+                x: {
+                    grid: { display: false },
+                    ticks: { color: '#94A3B8' }
+                }
+            }
+        }
+    });
+
+    new Chart(ctxSuccess, {
+        type: 'doughnut',
+        data: {
+            labels: ['Success', 'Failed'],
+            datasets: [{
+                data: [98.5, 1.5],
+                backgroundColor: ['#4ade80', '#ef4444'],
+                borderWidth: 0,
+                hoverOffset: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            cutout: '70%',
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: { color: '#94A3B8' }
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}

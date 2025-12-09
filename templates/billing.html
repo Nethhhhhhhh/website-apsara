@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+
+{% block title %}KHQR Billing - Apsara Premium{% endblock %}
+
+{% block content %}
+<div class="flex-center" style="min-height: 80vh;">
+    <div class="card" style="width: 100%; max-width: 500px; text-align: center;">
+        <h2 style="margin-bottom: 0.5rem;">Secure Payment</h2>
+        <p style="color: var(--text-muted); margin-bottom: 2rem;">Scan with any KHQR banking app</p>
+
+        <!-- QR Display Area -->
+        <div id="qr-container"
+            style="background: white; padding: 20px; border-radius: 16px; display: inline-block; margin-bottom: 1.5rem;">
+            <div id="qr-code"></div>
+        </div>
+
+        <!-- Timer -->
+        <div style="margin-bottom: 2rem;">
+            <p style="color: var(--text-muted); font-size: 0.9rem;">Code Expires In</p>
+            <div id="timer"
+                style="font-size: 2rem; font-weight: 700; color: var(--primary-gold); font-family: monospace;">
+                10:00
+            </div>
+        </div>
+
+        <!-- Amount Info -->
+        <div style="margin-bottom: 2rem; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1rem;">
+            <p style="color: var(--text-muted);">Total Amount</p>
+            <h3 style="font-size: 1.5rem;">$ <span id="amount-display">0.01</span></h3>
+        </div>
+
+        <!-- Refresh Button (Hidden by default) -->
+        <button id="refresh-btn" onclick="generateQR()" class="btn btn-primary" style="width: 100%; display: none;">
+            Generate New Code
+        </button>
+
+        <p id="status-msg" style="color: var(--text-muted); margin-top: 1rem; font-size: 0.8rem;">
+            Waiting for payment...
+        </p>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+    let countdownInterval;
+
+    function startTimer(expiresAt) {
+        clearInterval(countdownInterval);
+
+        const updateTimer = () => {
+            const now = new Date().getTime();
+            const expiration = new Date(expiresAt).getTime();
+            const distance = expiration - now;
+
+            if (distance < 0) {
+                clearInterval(countdownInterval);
+                document.getElementById("timer").innerText = "EXPIRED";
+                document.getElementById("timer").style.color = "var(--secondary-red)";
+                document.getElementById("qr-container").style.opacity = "0.2";
+                document.getElementById("refresh-btn").style.display = "inline-flex";
+                document.getElementById("status-msg").innerText = "Code expired. Please generate a new one.";
+                return;
+            }
+
+            const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+            document.getElementById("timer").innerText =
+                (minutes < 10 ? "0" + minutes : minutes) + ":" +
+                (seconds < 10 ? "0" + seconds : seconds);
+        };
+
+        updateTimer(); // Run once immediately
+        countdownInterval = setInterval(updateTimer, 1000);
+    }
+
+    async function generateQR() {
+        // Reset UI
+        document.getElementById("refresh-btn").style.display = "none";
+        document.getElementById("qr-container").style.opacity = "1";
+        document.getElementById("timer").style.color = "var(--primary-gold)";
+        document.getElementById("qr-code").innerHTML = ""; // Clear old QR
+
+        // Show Toast Notification
+        if (typeof showToast === 'function') {
+            showToast("Processing", "Generating secure KHQR code...", "success");
+        } else {
+            document.getElementById("status-msg").innerText = "Generating secure code...";
+        }
+
+        try {
+            const formData = new FormData();
+            formData.append('amount', '0.01'); // Dynamic in real app
+
+            const response = await fetch('/api/billing/create', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await response.json();
+
+            if (data.status === 'success') {
+                // Generate QR Canvas
+                new QRCode(document.getElementById("qr-code"), {
+                    text: data.qr_string,
+                    width: 200,
+                    height: 200,
+                    colorDark: "#000000",
+                    colorLight: "#ffffff",
+                    correctLevel: QRCode.CorrectLevel.H
+                });
+
+                document.getElementById("amount-display").innerText = parseFloat(data.amount).toFixed(2);
+                document.getElementById("status-msg").innerText = "Scan to Pay";
+
+                if (typeof showToast === 'function') {
+                    showToast("Ready", "Secure KHQR code generated successfully!", "success");
+                }
+
+                // Start Timer
+                startTimer(data.expires_at);
+            }
+        } catch (error) {
+            console.error(error);
+            if (typeof showToast === 'function') {
+                showToast("Error", "Failed to generate code.", "error");
+            } else {
+                document.getElementById("status-msg").innerText = "Error generating code.";
+            }
+        }
+    }
+
+    // Auto-generate on load
+    window.onload = generateQR;
+</script>
+{% endblock %}
