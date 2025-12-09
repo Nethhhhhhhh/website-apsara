@@ -23,14 +23,18 @@
                 <img src="/static/logo.jpg" alt="Apsara Logo" style="height: 70px; border-radius: 50%;">
             </a>
             <div class="nav-links">
-                <a href="/" class="btn btn-outline" style="border: none; color: var(--text-light);">Home</a>
+                <a href="/" class="btn btn-outline" style="border: none; color: var(--text-light);"
+                    data-i18n="nav_home">Home</a>
                 {% if user %}
-                <a href="/tools" class="btn btn-outline" style="border: none; color: var(--text-light);">Tools</a>
-                <a href="/billing" class="btn btn-outline" style="border: none; color: var(--text-light);">Billing</a>
-                <a href="/profile" class="btn btn-outline" style="margin-right: 10px;">Profile</a>
-                <a href="/logout" class="btn btn-primary">Logout</a>
+                <a href="/tools" class="btn btn-outline" style="border: none; color: var(--text-light);"
+                    data-i18n="nav_tools">Tools</a>
+                <a href="/billing" class="btn btn-outline" style="border: none; color: var(--text-light);"
+                    data-i18n="nav_billing">Billing</a>
+                <a href="/profile" class="btn btn-outline" style="margin-right: 10px;"
+                    data-i18n="nav_profile">Profile</a>
+                <a href="/logout" class="btn btn-primary" data-i18n="nav_logout">Logout</a>
                 {% else %}
-                <a href="/login" class="btn btn-primary">Sign In</a>
+                <a href="/login" class="btn btn-primary" data-i18n="nav_login">Sign In</a>
                 {% endif %}
             </div>
         </div>
@@ -40,26 +44,7 @@
         {% block content %}{% endblock %}
     </main>
 
-    <footer
-        style="margin-top: 4rem; padding: 2rem 0; border-top: 1px solid rgba(255,255,255,0.1); text-align: center; color: var(--text-muted);">
-        <div class="container">
-            <p style="margin-bottom: 0.5rem;">Copyright by Phannith.</p>
-            <div style="font-size: 0.9rem;">
-                <span style="margin: 0 10px;">Community Guidelines</span> |
-                <span style="margin: 0 10px;">DSA and other Legal Resources</span>
-            </div>
-            <div style="margin-top: 1rem; display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap;">
-                <a href="mailto:noyphannith020@gmail.com"
-                    style="color: var(--primary-gold); text-decoration: none; display: flex; align-items: center; gap: 5px;">
-                    noyphannith020@gmail.com
-                </a>
-                <a href="https://t.me/blehhhhhhhhhhhhhhhhhhhhhhhh" target="_blank"
-                    style="color: var(--primary-gold); text-decoration: none; display: flex; align-items: center; gap: 5px;">
-                    Telegram
-                </a>
-            </div>
-        </div>
-    </footer>
+
 
     <script src="/static/script.js"></script>
     <script src="/static/particles.js"></script>

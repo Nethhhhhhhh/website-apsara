@@ -38,9 +38,6 @@ body {
     overflow-x: hidden;
 }
 
-/* Typography */
-h1,
-h2,
 h3,
 h4,
 h5,
@@ -163,7 +160,7 @@ a {
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
-    
+
 }
 
 /* Forms */
@@ -267,4 +264,103 @@ a {
         opacity: 0;
         transform: translateX(20px);
     }
+}
+
+/* Premium Footer */
+.premium-footer {
+    margin-top: auto;
+    background: rgba(15, 23, 42, 0.95);
+    backdrop-filter: blur(20px);
+    border-top: 1px solid rgba(255, 215, 0, 0.1);
+    padding: 3rem 0;
+    position: relative;
+    overflow: hidden;
+}
+
+.premium-footer::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255, 215, 0, 0.5), transparent);
+}
+
+.footer-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+    position: relative;
+    z-index: 1;
+}
+
+.footer-copyright {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    letter-spacing: 0.05em;
+}
+
+.footer-links {
+    display: flex;
+    gap: 1.5rem;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.footer-link {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    position: relative;
+    transition: all 0.3s ease;
+    padding: 0.5rem 1rem;
+    border-radius: var(--radius-md);
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid transparent;
+}
+
+.footer-link:hover {
+    color: var(--primary-gold);
+    background: rgba(255, 215, 0, 0.05);
+    border-color: rgba(255, 215, 0, 0.2);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.footer-divider {
+    color: rgba(255, 255, 255, 0.1);
+}
+
+.footer-contact {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.social-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.25rem;
+    background: linear-gradient(145deg, rgba(30, 41, 59, 0.8), rgba(15, 23, 42, 0.9));
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 50px;
+    color: var(--text-light);
+    font-size: 0.9rem;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.social-btn:hover {
+    border-color: var(--primary-gold);
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.15);
+    transform: translateY(-2px);
+    color: var(--primary-gold);
+}
+
+.social-btn i,
+.social-btn svg {
+    color: var(--primary-gold);
 }
