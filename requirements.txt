@@ -9,3 +9,6 @@ aiofiles
 itsdangerous
 requests
 crcmod
+passlib[argon2]
+argon2-cffi
+bcrypt
