@@ -1,4 +1,4 @@
-from telethon import TelegramClient, events
+from telethon import TelegramClient
 from telethon.tl.functions.channels import InviteToChannelRequest
 from telethon.errors import PhoneNumberInvalidError, PeerFloodError, UserPrivacyRestrictedError
 import os
@@ -16,18 +16,7 @@ class TelegramManager:
         self.phone = config.PHONE
         self.session_name = config.SESSION_NAME
         self.client = TelegramClient(self.session_name, self.api_id, self.api_hash)
-        
-        # Initialize Bot Client
-        if config.BOT_TOKEN and config.BOT_TOKEN != 'YOUR_BOT_TOKEN':
-            try:
-                self.bot = TelegramClient('apsara_bot', self.api_id, self.api_hash).start(bot_token=config.BOT_TOKEN)
-                self.setup_handlers()
-            except Exception as e:
-                print(f"Stats: Failed to start Bot Client: {e}")
-                self.bot = None
-        else:
-            self.bot = None
-
+    
     async def update_session(self, api_id, api_hash, phone):
         """Updates the client with new credentials and attempts to connect."""
         if self.client:
@@ -36,35 +25,16 @@ class TelegramManager:
         self.api_id = int(api_id)
         self.api_hash = api_hash
         self.phone = phone
-        
+        # Using a new session file for dynamic users or same one?
+        # User requested "Account Settings" implies single user context for now.
+        # We'll re-use the session name but maybe append ID in future.
+        # For now, keep simple:
         self.client = TelegramClient(self.session_name, self.api_id, self.api_hash)
         await self.client.connect()
         return True
 
-    def setup_handlers(self):
-        if not self.bot:
-            return
-
-        @self.bot.on(events.NewMessage(pattern='/start'))
-        async def start_handler(event):
-            sender = await event.get_sender()
-            first_name = sender.first_name if sender else "User"
-            
-            # Check for payload (e.g. /start login)
-            payload = event.raw_text.split()
-            if len(payload) > 1 and payload[1] == 'login':
-                await event.respond(f"👋 **Welcome back, {first_name}!**\n\nYou have accessed the Quick Login flow.\nPlease return to the website and enter your phone number to receive your OTP code here.")
-            else:
-                await event.respond(f"Hello {first_name}! I am the Apsara Helper Bot.\n\nI can help you manage your channel and download videos.")
-
     async def connect(self):
         await self.client.connect()
-        # Bot is auto-started in init via .start(), but we can ensure it's running if needed, 
-        # though .start() returns the client and runs it. 
-        # For Telethon bot client, typically we run_until_disconnected in main, 
-        # but here we are in a FastAPI app. 
-        # We rely on the event loop. .start() usually creates the task.
-        pass
         
     async def is_authorized(self):
         return await self.client.is_user_authorized()

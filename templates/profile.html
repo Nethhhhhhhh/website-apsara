@@ -45,10 +45,6 @@
                     PREMIUM MEMBER
                 </span>
                 <span style="color: var(--text-muted);">ID: {{ user.id }}</span>
-                {% if user.role in ['admin', 'super_admin'] %}
-                <a href="/admin" class="btn-sm btn-outline"
-                    style="margin-left: 10px; color: var(--primary-gold); border-color: var(--primary-gold);">Dashboard</a>
-                {% endif %}
             </div>
         </div>
 
@@ -142,111 +138,7 @@
                     </div>
                 </form>
             </div>
-
-            <!-- Security Settings (2FA) -->
-            <div class="card">
-                <h3 style="margin-bottom: 1.5rem;">Security</h3>
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <div>
-                        <h4 style="margin-bottom: 0.5rem;">Two-Factor Authentication</h4>
-                        <p style="color: var(--text-muted); font-size: 0.9rem;">
-                            Add an extra layer of security to your account.
-                        </p>
-                    </div>
-                    <div>
-                        {% if user.two_factor_secret %}
-                        <span class="badge badge-primary" style="margin-right: 1rem;">Enabled</span>
-                        <button onclick="disable2FA()" class="btn btn-outline"
-                            style="border-color: var(--secondary-red); color: #ef4444;">Disable</button>
-                        {% else %}
-                        <span class="badge badge-secondary" style="margin-right: 1rem;">Disabled</span>
-                        <button onclick="setup2FA()" class="btn btn-outline">Enable</button>
-                        {% endif %}
-                    </div>
-                </div>
-
-                <!-- 2FA Setup Area (Hidden by default) -->
-                <div id="2fa-setup-area"
-                    style="display: none; margin-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1.5rem;">
-                    <div style="text-align: center; margin-bottom: 1.5rem;">
-                        <p style="margin-bottom: 1rem;">1. Scan this QR code with your Authenticator App (Google Auth,
-                            Authy, etc.)</p>
-                        <img id="qr-image" src="" style="background: white; padding: 10px; border-radius: 8px;">
-                        <p style="margin-top: 1rem; font-family: monospace; color: var(--primary-gold);"
-                            id="secret-code"></p>
-                    </div>
-                    <div style="max-width: 300px; margin: 0 auto;">
-                        <p style="margin-bottom: 0.5rem;">2. Enter the verification code</p>
-                        <div style="display: flex; gap: 0.5rem;">
-                            <input type="text" id="verify-code" class="form-input" placeholder="000 000"
-                                style="text-align: center;">
-                            <button onclick="confirm2FA()" class="btn btn-primary">Verify & Enable</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
         </div>
-
-        <script>
-            // Existing updateProfile function ...
-
-            async function setup2FA() {
-                const res = await fetch('/api/auth/2fa/setup', { method: 'POST' });
-                const data = await res.json();
-
-                document.getElementById('qr-image').src = data.qr_url;
-                document.getElementById('secret-code').innerText = data.secret;
-                document.getElementById('2fa-setup-area').style.display = 'block';
-
-                // Store secret temporarily in global scope or closure?
-                window.tempSecret = data.secret;
-            }
-
-            async function confirm2FA() {
-                const code = document.getElementById('verify-code').value;
-                if (!code) return alert('Please enter code');
-
-                const formData = new FormData();
-                formData.append('secret', window.tempSecret);
-                formData.append('code', code.replace(/\s/g, ''));
-
-                const res = await fetch('/api/auth/2fa/enable', {
-                    method: 'POST',
-                    body: formData
-                });
-
-                if (res.ok) {
-                    alert('2FA Enabled Successfully!');
-                    location.reload();
-                } else {
-                    alert('Invalid Code');
-                }
-            }
-
-            async function disable2FA() {
-                const password = prompt("Enter your password to disable 2FA:");
-                if (!password) return;
-
-                const formData = new FormData();
-                formData.append('password', password);
-
-                try {
-                    const res = await fetch('/api/auth/2fa/disable', {
-                        method: 'POST',
-                        body: formData
-                    });
-
-                    if (res.ok) {
-                        alert('2FA Disabled');
-                        location.reload();
-                    } else {
-                        alert('Incorrect Password');
-                    }
-                } catch (e) {
-                    alert('Error');
-                }
-            }
-        </script>
 
         <!-- Right Column (Sidebar) -->
         <div style="display: flex; flex-direction: column; gap: 2rem;">
