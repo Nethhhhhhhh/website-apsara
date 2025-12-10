@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard - Apsara{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 1400px;">
+
+    <!-- Top Bar -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+        <div>
+            <h1>Admin Dashboard</h1>
+            <p style="color: var(--text-muted);">Manage your application and users</p>
+        </div>
+        <div>
+            <span class="badge badge-gold">{{ user.role|upper }}</span>
+        </div>
+    </div>
+
+    <!-- Analytics Cards -->
+    <div class="grid-cols-4"
+        style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+        <div class="card">
+            <h3>Total Users</h3>
+            <div style="font-size: 2.5rem; font-weight: bold; color: var(--text-light);">{{ stats.total_users }}</div>
+            <div style="color: var(--text-muted);">Registered Accounts</div>
+        </div>
+        <div class="card">
+            <h3>Active Users</h3>
+            <div style="font-size: 2.5rem; font-weight: bold; color: #4ade80;">{{ stats.active_users }}</div>
+            <div style="color: var(--text-muted);">Currently Active</div>
+        </div>
+        <div class="card">
+            <h3>Premium</h3>
+            <div style="font-size: 2.5rem; font-weight: bold; color: var(--primary-gold);">{{ stats.premium_users }}
+            </div>
+            <div style="color: var(--text-muted);">Subscribers</div>
+        </div>
+        <div class="card">
+            <h3>Revenue</h3>
+            <div style="font-size: 2.5rem; font-weight: bold; color: var(--text-light);">$0</div>
+            <div style="color: var(--text-muted);">Estimated Monthly</div>
+        </div>
+    </div>
+
+    <!-- Analytics Chart -->
+    <div class="card" style="margin-bottom: 2rem;">
+        <h3 style="margin-bottom: 1rem;">Growth Analytics</h3>
+        <div style="height: 300px; width: 100%;">
+            <canvas id="growthChart"></canvas>
+        </div>
+    </div>
+
+    <!-- User Management -->
+    <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+            <h3>User Management</h3>
+            <button class="btn btn-outline" onclick="loadUsers()">Refresh List</button>
+        </div>
+
+        <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; color: var(--text-light);">
+                <thead>
+                    <tr style="text-align: left; border-bottom: 1px solid rgba(255,255,255,0.1);">
+                        <th style="padding: 1rem;">ID</th>
+                        <th style="padding: 1rem;">Name</th>
+                        <th style="padding: 1rem;">Email</th>
+                        <th style="padding: 1rem;">Phone</th>
+                        <th style="padding: 1rem;">Role</th>
+                        <th style="padding: 1rem;">Status</th>
+                        <th style="padding: 1rem;">Joined</th>
+                        <th style="padding: 1rem;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="users-table-body">
+                    <!-- Loaded via JS -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Initialize Chart
+    const ctx = document.getElementById('growthChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+            datasets: [{
+                label: 'New Users',
+                data: [12, 19, 3, 5, 2, 3],
+                borderColor: '#FFD700',
+                backgroundColor: 'rgba(255, 215, 0, 0.1)',
+                fill: true,
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { labels: { color: '#94a3b8' } }
+            },
+            scales: {
+                y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+            }
+        }
+    });
+
+    // User Management Functions
+    async function loadUsers() {
+        const tbody = document.getElementById('users-table-body');
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 2rem;">Loading...</td></tr>';
+
+        try {
+            const res = await fetch('/api/admin/users');
+            const users = await res.json();
+
+            tbody.innerHTML = '';
+            users.forEach(user => {
+                const tr = document.createElement('tr');
+                tr.style.borderBottom = '1px solid rgba(255,255,255,0.05)';
+                tr.innerHTML = `
+                    <td style="padding: 1rem;">#${user.id}</td>
+                    <td style="padding: 1rem;">${user.full_name}</td>
+                    <td style="padding: 1rem;">${user.email || 'Telegram User'}</td>
+                    <td style="padding: 1rem;">${user.phone || '-'}</td>
+                    <td style="padding: 1rem;">
+                        <span class="badge ${user.role === 'admin' ? 'badge-primary' : 'badge-secondary'}">${user.role}</span>
+                    </td>
+                    <td style="padding: 1rem;">
+                        <span style="color: ${user.is_active ? '#4ade80' : '#ef4444'}">${user.is_active ? 'Active' : 'Inactive'}</span>
+                    </td>
+                    <td style="padding: 1rem;">${new Date(user.created_at).toLocaleDateString()}</td>
+                    <td style="padding: 1rem; display: flex; gap: 0.5rem;">
+                        <button onclick="toggleStatus(${user.id})" class="btn-sm btn-outline">${user.is_active ? 'Deactivate' : 'Activate'}</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        } catch (e) {
+            tbody.innerHTML = '<tr><td colspan="7" style="color: var(--secondary-red);">Error loading users</td></tr>';
+        }
+    }
+
+    async function toggleStatus(id) {
+        if (!confirm('Are you sure?')) return;
+
+        try {
+            const res = await fetch(`/api/admin/users/${id}/toggle_status`, { method: 'POST' });
+            if (res.ok) {
+                loadUsers();
+            } else {
+                const data = await res.json();
+                alert(data.detail || 'Error');
+            }
+        } catch (e) {
+            alert('Network error');
+        }
+    }
+
+    loadUsers();
+</script>
+{% endblock %}

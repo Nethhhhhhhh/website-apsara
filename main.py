@@ -14,6 +14,17 @@ import khqr_utils
 from datetime import datetime, timedelta
 import shutil
 import os
+from passlib.context import CryptContext
+import pyotp
+
+# Security - Password Hashing
+pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
+
+def verify_password(plain_password, hashed_password):
+    return pwd_context.verify(plain_password, hashed_password)
+
+def get_password_hash(password):
+    return pwd_context.hash(password)
 
 # Ensure static/avatars exists
 os.makedirs("static/avatars", exist_ok=True)
@@ -44,12 +55,110 @@ def get_current_user(request: Request, db: Session = Depends(get_db)):
     user_id = request.session.get("user_id")
     if not user_id:
         return None
-    return db.query(database.User).filter(database.User.id == user_id).first()
+    user = db.query(database.User).filter(database.User.id == user_id).first()
+    if user and not user.is_active:
+        return None
+    return user
+
+def get_admin_user(request: Request, db: Session = Depends(get_db)):
+    user = get_current_user(request, db)
+    if not user or user.role not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
+    return user
 
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request, db: Session = Depends(get_db)):
     user = get_current_user(request, db)
+    # Redirect Admin to Dashboard automatically? Maybe not, keep them separate.
     return templates.TemplateResponse("index.html", {"request": request, "user": user})
+
+# --- Admin Dashboard Endpoints ---
+
+@app.get("/admin", response_class=HTMLResponse)
+async def admin_dashboard(request: Request, user: database.User = Depends(get_admin_user), db: Session = Depends(get_db)):
+    # Calculate Analytics
+    total_users = db.query(database.User).count()
+    active_users = db.query(database.User).filter(database.User.is_active == True).count()
+    premium_users = db.query(database.User).filter(database.User.is_premium == True).count()
+    
+    # Get Recent Users
+    recent_users = db.query(database.User).order_by(database.User.created_at.desc()).limit(5).all()
+    
+    return templates.TemplateResponse("admin_dashboard.html", {
+        "request": request, 
+        "user": user,
+        "stats": {
+            "total_users": total_users,
+            "active_users": active_users,
+            "premium_users": premium_users
+        },
+        "recent_users": recent_users
+    })
+
+@app.get("/api/admin/users")
+async def get_all_users(request: Request, user: database.User = Depends(get_admin_user), db: Session = Depends(get_db)):
+    users = db.query(database.User).all()
+    return [{
+        "id": u.id, 
+        "email": u.email, 
+        "full_name": u.full_name, 
+        "email": u.email,
+        "phone": u.phone,
+        "role": u.role, 
+        "is_active": u.is_active,
+        "created_at": u.created_at.isoformat()
+    } for u in users]
+
+@app.post("/api/admin/users/{target_id}/toggle_status")
+async def toggle_user_status(target_id: int, user: database.User = Depends(get_admin_user), db: Session = Depends(get_db)):
+    target = db.query(database.User).filter(database.User.id == target_id).first()
+    if not target:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Prevent self-deactivation
+    if target.id == user.id:
+        raise HTTPException(status_code=400, detail="Cannot deactivate yourself")
+        
+    target.is_active = not target.is_active
+    db.commit()
+    
+    # Log Activity
+    log = database.ActivityLog(
+        user_id=user.id,
+        action="TOGGLE_STATUS",
+        details=f"Changed user {target_id} active status to {target.is_active}"
+    )
+    db.add(log)
+    db.commit()
+    
+    return {"status": "success", "new_state": target.is_active}
+
+@app.post("/api/admin/users/{target_id}/role")
+async def update_user_role(target_id: int, role: str = Form(...), user: database.User = Depends(get_admin_user), db: Session = Depends(get_db)):
+    if user.role != "super_admin":
+        raise HTTPException(status_code=403, detail="Only Super Admin can change roles")
+        
+    target = db.query(database.User).filter(database.User.id == target_id).first()
+    if not target:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    if role not in ["user", "admin", "super_admin"]:
+         raise HTTPException(status_code=400, detail="Invalid role")
+
+    target.role = role
+    db.commit()
+    
+    # Log Activity
+    log = database.ActivityLog(
+        user_id=user.id,
+        action="UPDATE_ROLE",
+        details=f"Changed user {target_id} role to {role}"
+    )
+    db.add(log)
+    db.commit()
+    
+    return {"status": "success", "new_role": target.role}
+
 
 import hashlib
 import hmac
@@ -133,7 +242,12 @@ async def register(
         return templates.TemplateResponse("login.html", {"request": request, "error": "Email already registered"})
     
     # Create user
-    new_user = database.User(email=email, hashed_password=password, full_name=full_name)
+    hashed_password = get_password_hash(password)
+    # First user becomes Super Admin (Bootstrap)
+    user_count = db.query(database.User).count()
+    role = "super_admin" if user_count == 0 else "user"
+    
+    new_user = database.User(email=email, hashed_password=hashed_password, full_name=full_name, role=role)
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
@@ -150,11 +264,93 @@ async def login(
     db: Session = Depends(get_db)
 ):
     user = db.query(database.User).filter(database.User.email == username).first()
-    if not user or user.hashed_password != password:
+    if not user or not verify_password(password, user.hashed_password):
          return templates.TemplateResponse("login.html", {"request": request, "error": "Invalid credentials"})
+         
+    if not user.is_active:
+         return templates.TemplateResponse("login.html", {"request": request, "error": "Account is deactivated"})
+
+    # Check 2FA
+    if user.two_factor_secret:
+        request.session["partial_user_id"] = user.id
+        return RedirectResponse(url="/auth/2fa_challenge", status_code=status.HTTP_303_SEE_OTHER)
     
     request.session["user_id"] = user.id
+    if user.role in ["admin", "super_admin"]:
+        return RedirectResponse(url="/admin", status_code=status.HTTP_303_SEE_OTHER)
     return RedirectResponse(url="/profile", status_code=status.HTTP_303_SEE_OTHER)
+
+@app.get("/auth/2fa_challenge", response_class=HTMLResponse)
+async def two_factor_challenge_page(request: Request):
+    if "partial_user_id" not in request.session:
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+    return templates.TemplateResponse("2fa_challenge.html", {"request": request})
+
+@app.post("/auth/2fa_challenge")
+async def verify_2fa_challenge(request: Request, code: str = Form(...), db: Session = Depends(get_db)):
+    user_id = request.session.get("partial_user_id")
+    if not user_id:
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+        
+    user = db.query(database.User).filter(database.User.id == user_id).first()
+    if not user or not user.two_factor_secret:
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+        
+    try:
+        totp = pyotp.TOTP(user.two_factor_secret)
+        if not totp.verify(code):
+             return templates.TemplateResponse("2fa_challenge.html", {"request": request, "error": "Invalid Code"})
+    except:
+         return templates.TemplateResponse("2fa_challenge.html", {"request": request, "error": "Invalid Secret"})
+        
+    # Login Success
+    request.session.pop("partial_user_id")
+    request.session["user_id"] = user.id
+    
+    if user.role in ["admin", "super_admin"]:
+        return RedirectResponse(url="/admin", status_code=status.HTTP_303_SEE_OTHER)
+        
+    return RedirectResponse(url="/profile", status_code=status.HTTP_303_SEE_OTHER)
+
+@app.post("/api/auth/2fa/setup")
+async def setup_2fa(request: Request, user: database.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    # Generate Secret
+    secret = pyotp.random_base32()
+    # Generate Provisioning URI
+    label = f"Apsara:{user.email}"
+    provisioning_uri = pyotp.totp.TOTP(secret).provisioning_uri(name=label, issuer_name="Apsara App")
+    
+    # We return the secret and URI. 
+    # Frontend should generate QR code from URI (using a JS lib or backend).
+    # Since I don't have a QR lib on backend easily without PIL/qrcode, I'll send the URI and use a JS lib or quick API on frontend?
+    # Or just return secret for manual entry if JS fails, but I should use a public QR API or similar for "Modern".
+    # User requested "Modern".
+    # I can use https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=... for simplicity.
+    
+    return {
+        "secret": secret, 
+        "uri": provisioning_uri,
+        "qr_url": f"https://api.qrserver.com/v1/create-qr-code/?size=200x200&data={provisioning_uri}"
+    }
+
+@app.post("/api/auth/2fa/enable")
+async def enable_2fa(request: Request, secret: str = Form(...), code: str = Form(...), user: database.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    totp = pyotp.TOTP(secret)
+    if not totp.verify(code):
+        raise HTTPException(status_code=400, detail="Invalid verification code")
+        
+    user.two_factor_secret = secret
+    db.commit()
+    return {"status": "success", "message": "2FA Enabled"}
+
+@app.post("/api/auth/2fa/disable")
+async def disable_2fa(request: Request, password: str = Form(...), user: database.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    if not verify_password(password, user.hashed_password):
+         raise HTTPException(status_code=400, detail="Invalid password")
+         
+    user.two_factor_secret = None
+    db.commit()
+    return {"status": "success", "message": "2FA Disabled"}
 
 @app.get("/auth/logout")
 async def logout(request: Request):
@@ -261,8 +457,8 @@ async def update_profile(
                 return {"status": "error", "message": "New passwords do not match"}
             
             # Verify old password
-            if password and user.hashed_password == password:
-                 user.hashed_password = new_password
+            if password and verify_password(password, user.hashed_password):
+                 user.hashed_password = get_password_hash(new_password)
             else:
                  return {"status": "error", "message": "Current password incorrect"}
 
