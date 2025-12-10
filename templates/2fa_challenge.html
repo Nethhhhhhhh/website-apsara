@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block title %}Verify Identity - Apsara{% endblock %}
+
+{% block content %}
+<div class="flex-center" style="min-height: 80vh;">
+    <div class="card" style="width: 100%; max-width: 400px; text-align: center;">
+        <h2 style="margin-bottom: 1rem;">Two-Factor Authentication</h2>
+        <p style="color: var(--text-muted); margin-bottom: 2rem;">Please enter the code from your authenticator app.</p>
+
+        <form action="/auth/2fa_challenge" method="POST">
+            <div class="form-group">
+                <input type="text" name="code" class="form-input"
+                    style="text-align: center; font-size: 1.5rem; letter-spacing: 0.5rem;" placeholder="000 000"
+                    maxlength="6" autofocus required>
+            </div>
+            {% if error %}
+            <div style="color: var(--secondary-red); margin-bottom: 1rem;">{{ error }}</div>
+            {% endif %}
+            <button type="submit" class="btn btn-primary" style="width: 100%;">Verify</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

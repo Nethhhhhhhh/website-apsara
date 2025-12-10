@@ -22,10 +22,17 @@
             <a href="/" class="logo">
                 <img src="/static/logo.jpg" alt="Apsara Logo" style="height: 70px; border-radius: 50%;">
             </a>
-            <div class="nav-links">
+            <!-- Mobile Menu Button -->
+
+
+            <div class="nav-links" id="nav-links">
                 <a href="/" class="btn btn-outline" style="border: none; color: var(--text-light);"
                     data-i18n="nav_home">Home</a>
                 {% if user %}
+                {% if user.role in ['admin', 'super_admin'] %}
+                <a href="/admin" class="btn btn-outline" style="border: none; color: var(--primary-gold);"
+                    data-i18n="nav_admin">Admin</a>
+                {% endif %}
                 <a href="/tools" class="btn btn-outline" style="border: none; color: var(--text-light);"
                     data-i18n="nav_tools">Tools</a>
                 <a href="/billing" class="btn btn-outline" style="border: none; color: var(--text-light);"

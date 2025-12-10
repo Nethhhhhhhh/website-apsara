@@ -391,3 +391,22 @@ function checkStrength() {
         text.style.color = '#4ade80';
     }
 }
+
+function toggleMenu() {
+    const nav = document.getElementById('nav-links');
+    const btn = document.querySelector('.mobile-menu-btn');
+
+    nav.classList.toggle('active');
+    btn.classList.toggle('active');
+}
+
+// Close menu when clicking outside
+document.addEventListener('click', (e) => {
+    const nav = document.getElementById('nav-links');
+    const btn = document.querySelector('.mobile-menu-btn');
+
+    if (nav.classList.contains('active') && !nav.contains(e.target) && (!btn || !btn.contains(e.target))) {
+        nav.classList.remove('active');
+        btn.classList.remove('active');
+    }
+});
