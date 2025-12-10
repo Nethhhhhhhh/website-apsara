@@ -28,11 +28,6 @@ class User(Base):
     api_hash = Column(String, nullable=True)
     phone = Column(String, nullable=True)
     
-    # Security & RBAC
-    role = Column(String, default="user") # 'super_admin', 'admin', 'user'
-    two_factor_secret = Column(String, nullable=True) # Base32 secret for TOTP
-    is_active = Column(Boolean, default=True)
-    
 class ActivityLog(Base):
     __tablename__ = "activity_logs"
     
