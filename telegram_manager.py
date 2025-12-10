@@ -21,12 +21,12 @@ class TelegramManager:
         if config.BOT_TOKEN and config.BOT_TOKEN != 'YOUR_BOT_TOKEN':
             try:
                 self.bot = TelegramClient('apsara_bot', self.api_id, self.api_hash)
-                 # We must start the bot, but not in __init__ as it returns a coroutine.
-                 # We will start it in the connect method or separate init method.
-                 # For now, we just attach handlers.
-                 self.setup_handlers()
-                 # We can start it lazily or create a task if loop assumes running.
-                 # In separate method: self.bot.start(bot_token=config.BOT_TOKEN)
+                # We must start the bot, but not in __init__ as it returns a coroutine.
+                # We will start it in the connect method or separate init method.
+                # For now, we just attach handlers.
+                self.setup_handlers()
+                # We can start it lazily or create a task if loop assumes running.
+                # In separate method: self.bot.start(bot_token=config.BOT_TOKEN)
             except Exception as e:
                 print(f"Stats: Failed to start Bot Client: {e}")
                 self.bot = None
