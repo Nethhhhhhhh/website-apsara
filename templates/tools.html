@@ -17,12 +17,13 @@
     <div id="tool-scraper" class="card">
         <h2 style="margin-bottom: 1rem;">Member Scraper</h2>
         <p style="color: var(--text-muted); margin-bottom: 1.5rem;">scrape members from a public group to CSV.</p>
-        <form action="/api/tools/scrape" method="POST">
+        <form onsubmit="handleScrape(event)">
             <div class="form-group">
                 <label class="form-label">Target Group Username</label>
                 <input type="text" name="target_group" class="form-input" placeholder="@groupname" required>
             </div>
-            <button type="submit" class="btn btn-primary" style="width: 100%;">Start Scraping</button>
+            <button type="submit" id="btn-scrape-submit" class="btn btn-primary" style="width: 100%;">Start
+                Scraping</button>
         </form>
     </div>
 
@@ -30,7 +31,7 @@
     <div id="tool-adder" class="card" style="display: none;">
         <h2 style="margin-bottom: 1rem;">Add Members</h2>
         <p style="color: var(--text-muted); margin-bottom: 1.5rem;">Add scraped members to your channel.</p>
-        <form action="/api/tools/add" method="POST">
+        <form onsubmit="handleAdd(event)">
             <div class="grid-cols-2" style="gap: 1rem;">
                 <div class="form-group">
                     <label class="form-label">Target Channel</label>
@@ -45,7 +46,7 @@
                     <input type="number" name="end_index" class="form-input" value="50">
                 </div>
             </div>
-            <button type="submit" class="btn btn-primary" style="width: 100%;">Start Adding</button>
+            <button type="submit" id="btn-add-submit" class="btn btn-primary" style="width: 100%;">Start Adding</button>
         </form>
     </div>
 
@@ -101,9 +102,72 @@
         document.getElementById('btn-adder').className = 'btn btn-outline';
         document.getElementById('btn-downloader').className = 'btn btn-outline';
 
-        // Show selected
         document.getElementById('tool-' + toolName).style.display = 'block';
         document.getElementById('btn-' + toolName).className = 'btn btn-primary';
+    }
+
+    async function handleScrape(event) {
+        event.preventDefault();
+        const form = event.target;
+        const btn = document.getElementById('btn-scrape-submit');
+        const formData = new FormData(form);
+
+        btn.disabled = true;
+        btn.innerText = "Scraping...";
+        showToast("Processing", "Starting member scrape...", "info");
+
+        try {
+            const response = await fetch('/api/tools/scrape', {
+                method: 'POST',
+                body: formData
+            });
+            const result = await response.json();
+
+            if (result.status === 'completed') {
+                showToast("Success", result.message, "success");
+            } else {
+                showToast("Error", result.message || "Unknown error", "error");
+            }
+        } catch (error) {
+            showToast("Error", "Network error occurred", "error");
+        } finally {
+            btn.disabled = false;
+            btn.innerText = "Start Scraping";
+        }
+    }
+
+    async function handleAdd(event) {
+        event.preventDefault();
+        const form = event.target;
+        const btn = document.getElementById('btn-add-submit');
+        const formData = new FormData(form);
+
+        btn.disabled = true;
+        btn.innerText = "Adding...";
+        showToast("Processing", "Starting to add members. This may take a while...", "info");
+
+        try {
+            const response = await fetch('/api/tools/add', {
+                method: 'POST',
+                body: formData
+            });
+            const result = await response.json();
+
+            if (result.status === 'completed') {
+                // The result message from backend is multi-line, might be long.
+                // We'll show a summary toast and maybe detail in console or a separate modal if needed.
+                // For now, let's just show the success toast.
+                showToast("Task Completed", "Member addition finished.", "success");
+                console.log(result.message);
+            } else {
+                showToast("Error", result.message || "Unknown error", "error");
+            }
+        } catch (error) {
+            showToast("Error", "Network error occurred", "error");
+        } finally {
+            btn.disabled = false;
+            btn.innerText = "Start Adding";
+        }
     }
 
     async function handleDownload(event) {

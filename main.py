@@ -247,7 +247,13 @@ async def register(
     user_count = db.query(database.User).count()
     role = "super_admin" if user_count == 0 else "user"
     
-    new_user = database.User(email=email, hashed_password=hashed_password, full_name=full_name, role=role)
+    new_user = database.User(
+        email=email, 
+        hashed_password=hashed_password, 
+        full_name=full_name, 
+        role=role,
+        last_login=datetime.utcnow()
+    )
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
@@ -275,6 +281,9 @@ async def login(
         request.session["partial_user_id"] = user.id
         return RedirectResponse(url="/auth/2fa_challenge", status_code=status.HTTP_303_SEE_OTHER)
     
+    user.last_login = datetime.utcnow()
+    db.commit()
+
     request.session["user_id"] = user.id
     if user.role in ["admin", "super_admin"]:
         return RedirectResponse(url="/admin", status_code=status.HTTP_303_SEE_OTHER)
@@ -531,12 +540,35 @@ async def analytics_page(request: Request, db: Session = Depends(get_db)):
     user = get_current_user(request, db)
     if not user:
          return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
-    return templates.TemplateResponse("analytics.html", {"request": request, "user": user})
+    
+    # Read CSV Data
+    csv_data = []
+    csv_headers = []
+    try:
+        if os.path.exists("data.csv"):
+            import csv
+            with open("data.csv", "r", encoding="utf-8") as f:
+                reader = csv.reader(f)
+                csv_headers = next(reader, [])
+                csv_data = list(reader)
+    except Exception as e:
+        print(f"Error reading CSV: {e}")
+
+    return templates.TemplateResponse("analytics.html", {
+        "request": request, 
+        "user": user,
+        "csv_headers": csv_headers,
+        "csv_data": csv_data
+    })
 
 @app.on_event("startup")
 async def startup_event():
     print("Starting Telegram Client...")
-    await telegram_bot.connect()
+    try:
+        await telegram_bot.connect()
+    except Exception as e:
+        print(f"Warning: Failed to connect to Telegram: {e}")
+        print("Web server will continue running, but Telegram features may be unavailable.")
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)

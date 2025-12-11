@@ -18,7 +18,7 @@ class TelegramManager:
         self.client = TelegramClient(self.session_name, self.api_id, self.api_hash)
         
         # Initialize Bot Client
-        if config.BOT_TOKEN and config.BOT_TOKEN != 'YOUR_BOT_TOKEN':
+        if config.BOT_TOKEN and config.BOT_TOKEN != 'YOUR_BOT_6TOKEN':
             try:
                 self.bot = TelegramClient('apsara_bot', self.api_id, self.api_hash)
                 # We must start the bot, but not in __init__ as it returns a coroutine.

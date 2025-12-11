@@ -22,6 +22,7 @@ class User(Base):
     is_premium = Column(Boolean, default=False)
     avatar_url = Column(String, nullable=True) # Profile Picture
     created_at = Column(DateTime, default=datetime.utcnow)
+    last_login = Column(DateTime, nullable=True)
     
     # Telegram Credentials
     api_id = Column(String, nullable=True) # Storing as String to be safe, though ID is int

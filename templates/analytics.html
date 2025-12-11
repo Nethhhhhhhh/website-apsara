@@ -47,6 +47,57 @@
         </div>
     </div>
 
+    <!-- Scraped Data Explorer -->
+    <div class="card" style="margin-bottom: 3rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+            <h3>Scraped Data Explorer</h3>
+            <div style="position: relative; width: 300px;">
+                <input type="text" id="csvSearch" placeholder="Filter by Name, Username or ID..." class="form-input"
+                    style="padding-left: 35px; background: rgba(0,0,0,0.3);">
+                <svg style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: var(--text-muted);"
+                    fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                </svg>
+            </div>
+        </div>
+
+        {% if csv_data %}
+        <div style="overflow-x: auto; max-height: 500px; overflow-y: auto;">
+            <table class="table" style="width: 100%; border-collapse: collapse; color: var(--text-light);"
+                id="csvTable">
+                <thead>
+                    <tr
+                        style="border-bottom: 1px solid rgba(255, 215, 0, 0.2); text-align: left; position: sticky; top: 0; background: #1e293b; z-index: 10;">
+                        {% for header in csv_headers %}
+                        <th style="padding: 1rem; color: var(--primary-gold); white-space: nowrap;">{{ header }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in csv_data %}
+                    <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05); transition: background 0.2s;"
+                        class="csv-row">
+                        {% for cell in row %}
+                        <td style="padding: 1rem; white-space: nowrap;">{{ cell }}</td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <p id="noResults" style="text-align: center; color: var(--text-muted); padding: 2rem; display: none;">No
+            matching records found.</p>
+        {% else %}
+        <div
+            style="text-align: center; padding: 2rem; border: 1px dashed rgba(255,255,255,0.1); border-radius: var(--radius-md);">
+            <p style="color: var(--text-muted);">No data found. Run the <strong>Member Scraper</strong> tool to populate
+                this table.</p>
+            <a href="/tools" class="btn btn-primary" style="margin-top: 1rem;">Go to Tools</a>
+        </div>
+        {% endif %}
+    </div>
+
     <!-- Download History Table -->
     <div class="card">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
@@ -164,5 +215,37 @@
             }
         }
     });
+
+    // CSV Filtering Logic
+    const searchInput = document.getElementById('csvSearch');
+    if (searchInput) {
+        searchInput.addEventListener('keyup', function () {
+            const filter = this.value.toLowerCase();
+            const rows = document.querySelectorAll('.csv-row');
+            let hasVisible = false;
+
+            rows.forEach(row => {
+                const cells = row.getElementsByTagName('td');
+                let match = false;
+                for (let i = 0; i < cells.length; i++) {
+                    if (cells[i].textContent.toLowerCase().indexOf(filter) > -1) {
+                        match = true;
+                        break;
+                    }
+                }
+                if (match) {
+                    row.style.display = '';
+                    hasVisible = true;
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+
+            const noResults = document.getElementById('noResults');
+            if (noResults) {
+                noResults.style.display = hasVisible ? 'none' : 'block';
+            }
+        });
+    }
 </script>
 {% endblock %}
