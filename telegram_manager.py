@@ -1,7 +1,7 @@
 from telethon import TelegramClient, events
 from telethon.tl.functions.channels import InviteToChannelRequest
 from telethon.tl.functions.messages import ImportChatInviteRequest, CheckChatInviteRequest
-from telethon.errors import PhoneNumberInvalidError, PeerFloodError, UserPrivacyRestrictedError
+from telethon.errors import PhoneNumberInvalidError, PeerFloodError, UserPrivacyRestrictedError, FloodWaitError
 import os
 import csv
 import asyncio
@@ -216,14 +216,32 @@ class TelegramManager:
                         
                         await asyncio.sleep(random.randint(5, 10)) 
                         
-                    except PeerFloodError:
+                    except (PeerFloodError, FloodWaitError) as e:
                         if auto_run:
+                            # Use random wait OR the required wait time (capped at user preference or handled)
+                            # User requested 30-180. If e.seconds is huge (24h), user's account is fried.
+                            # But let's respect the "don't stop" request.
+                            
                             wait_flood = random.randint(30, 180)
-                            logs.append(f"Flood Error! Auto-Run Active. Waiting {wait_flood} seconds...")
+                            
+                            # Optional: if it's a real FloodWaitError, maybe we should wait at least that long?
+                            # But user said "wait 30-180".
+                            # If we wait less than required, we'll just hit it again immediately.
+                            # Let's try to be smart: wait max(30, min(180, e.seconds)) if available?
+                            # PeerFloodError doesn't always have .seconds. FloodWaitError does.
+                            
+                            req_seconds = getattr(e, 'seconds', 0)
+                            if req_seconds and req_seconds > 0:
+                                # If it requires e.g. 50s, we should wait 50s + small buffer.
+                                # If it requires 85000s, user's range of 180 is useless, but we will follow instructions.
+                                # Let's log the detail.
+                                pass
+
+                            logs.append(f"Flood Error ({getattr(e, 'seconds', 'unknown')}s)! Auto-Run Active. Waiting {wait_flood} seconds...")
                             await asyncio.sleep(wait_flood)
                             continue
                         else:
-                            logs.append("Getting Flood Error from telegram. Script is stopping now.")
+                            logs.append(f"Getting Flood Error ({getattr(e, 'seconds', 'unknown')}s). Script is stopping now.")
                             break
                     except UserPrivacyRestrictedError:
                         logs.append("User privacy restricted. Skipping.")
