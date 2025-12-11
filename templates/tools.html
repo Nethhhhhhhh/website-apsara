@@ -1,79 +1,303 @@
-<div
-    style="width: 100%; background: #000; display: flex; align-items: center; justify-content: center; margin-top: 1rem; border-radius: 8px; overflow: hidden;">
-    <video id="video-player" controls style="width: 100%; max-height: 400px; display: none;"></video>
+{% extends "base.html" %}
+
+{% block title %}Tools - Apsara Premium{% endblock %}
+
+{% block content %}
+<div class="dashboard-container"
+    style="display: grid; grid-template-columns: 350px 1fr; gap: 20px; max-width: 1400px; padding: 20px;">
+
+    <!-- Left Sidebar: Live Console -->
+    <aside style="position: sticky; top: 20px; height: calc(100vh - 40px); display: flex; flex-direction: column;">
+        <div class="card" id="log-container"
+            style="display: flex; flex-direction: column; height: 100%; border: 1px solid rgba(255, 215, 0, 0.2);">
+            <div class="card-header" style="justify-content: space-between; align-items: center; display: flex;">
+                <h3><i class="fas fa-terminal"></i> Live Console</h3>
+                <button class="btn btn-secondary" onclick="clearLogs()"
+                    style="padding: 2px 8px; font-size: 0.8rem;">Clear</button>
+            </div>
+            <div id="log-content"
+                style="flex: 1; overflow-y: auto; background: #0f172a; padding: 10px; font-family: 'Courier New', monospace; font-size: 0.9rem; color: #cbd5e1; border-radius: 0 0 10px 10px;">
+                <div class="log-entry" style="color: #94a3b8;">Waiting for command...</div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Right Content: Tools -->
+    <main style="display: flex; flex-direction: column; gap: 20px;">
+        <div class="page-header">
+            <h1><i class="fas fa-toolbox"></i> Telegram Tools</h1>
+            <p>Manage your channel members and content.</p>
+        </div>
+
+        <div class="tools-grid">
+            <!-- Member Scraper Card -->
+            <div class="card tool-card" onclick="openTool('scraper')">
+                <div class="tool-icon"><i class="fas fa-users-cog"></i></div>
+                <h3>Member Scraper</h3>
+                <p>Scrape members from targeted groups.</p>
+            </div>
+
+            <!-- Add Members Card -->
+            <div class="card tool-card" onclick="openTool('adder')">
+                <div class="tool-icon"><i class="fas fa-user-plus"></i></div>
+                <h3>Add Members</h3>
+                <p>Add scraped members to your channel.</p>
+            </div>
+
+            <!-- Video Downloader Card -->
+            <div class="card tool-card" onclick="openTool('downloader')">
+                <div class="tool-icon"><i class="fas fa-download"></i></div>
+                <h3>Video Downloader</h3>
+                <p>Download restricted videos from private channels.</p>
+            </div>
+        </div>
+
+        <!-- Tool Forms (Hidden by default) -->
+        <div id="tool-forms">
+            <!-- Scraper Form -->
+            <div id="scraper-form" class="card" style="display:none;">
+                <div class="card-header">
+                    <h3>Member Scraper</h3>
+                    <button class="btn btn-secondary" onclick="closeForms()">Close</button>
+                </div>
+                <form onsubmit="handleScrape(event)">
+                    <div class="form-group">
+                        <label class="form-label">Target Group (Username or Link)</label>
+                        <input type="text" name="target_group" class="form-input"
+                            placeholder="@group_username or https://t.me/..." required>
+                    </div>
+                    <button type="submit" id="btn-scrape-submit" class="btn btn-primary" style="width: 100%;">Start
+                        Scraping</button>
+                </form>
+            </div>
+
+            <!-- Adder Form -->
+            <div id="adder-form" class="card" style="display:none;">
+                <div class="card-header">
+                    <h3>Add Members</h3>
+                    <button class="btn btn-secondary" onclick="closeForms()">Close</button>
+                </div>
+                <form onsubmit="handleAdd(event)">
+                    <div class="form-group">
+                        <label class="form-label">Target Channel (Username)</label>
+                        <input type="text" name="target_channel" class="form-input" placeholder="@your_channel"
+                            required>
+                    </div>
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label class="form-label">Start Index</label>
+                            <input type="number" name="start_index" class="form-input" value="1">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">End Index</label>
+                            <input type="number" name="end_index" class="form-input" value="50">
+                        </div>
+                        <div class="form-group"
+                            style="grid-column: span 2; display: flex; align-items: center; gap: 10px;">
+                            <input type="checkbox" name="auto_run" id="auto_run" style="width: auto;">
+                            <label for="auto_run" class="form-label" style="margin: 0; cursor: pointer;">Auto Run
+                                (Continue on Flood Error - Wait 30-180s)</label>
+                        </div>
+                    </div>
+                    <button type="submit" id="btn-add-submit" class="btn btn-primary" style="width: 100%;">Start
+                        Adding</button>
+                </form>
+            </div>
+
+            <!-- Downloader Form -->
+            <div id="downloader-form" class="card" style="display:none;">
+                <div class="card-header">
+                    <h3>Video Downloader</h3>
+                    <button class="btn btn-secondary" onclick="closeForms()">Close</button>
+                </div>
+                <form onsubmit="handleDownload(event)">
+                    <div class="form-group">
+                        <label class="form-label">Message Link</label>
+                        <input type="text" name="link" class="form-input" placeholder="https://t.me/c/..." required>
+                    </div>
+                    <button type="submit" id="btn-download-submit" class="btn btn-primary" style="width: 100%;">Download
+                        Video</button>
+                </form>
+
+                <!-- Progress / Status Area -->
+                <div id="status-area" style="margin-top: 1.5rem; display: none;">
+                    <p id="status-text" style="margin-bottom: 0.5rem; text-align: center;">Processing...</p>
+                    <div style="width: 100%; height: 6px; background: #333; border-radius: 3px; overflow: hidden;">
+                        <div id="progress-bar"
+                            style="width: 0%; height: 100%; background: var(--gold-gradient); transition: width 0.3s;">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Result Area -->
+                <div style="margin-top: 2rem; display: none;" id="preview-area">
+                    <h3>Download Complete</h3>
+                    <div
+                        style="width: 100%; background: #000; display: flex; align-items: center; justify-content: center; margin-top: 1rem; border-radius: 8px; overflow: hidden;">
+                        <video id="video-player" controls
+                            style="width: 100%; max-height: 400px; display: none;"></video>
+                    </div>
+                    <a id="download-link" href="#" class="btn btn-primary"
+                        style="margin-top: 1rem; width: 100%; text-align: center; display: block;" download>Recursive
+                        Download</a>
+                </div>
+            </div>
+        </div>
+    </main>
 </div>
-<a id="download-link" href="#" class="btn btn-primary"
-    style="margin-top: 1rem; width: 100%; text-align: center; display: block;" download>Recursive
-    Download</a>
-</div>
-</div>
 
-<!-- Log Output Area -->
-<div id="log-container" class="card"
-    style="margin-top: 2rem; display: none; background: #0f172a; border: 1px solid var(--primary-gold);">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-        <h3 style="color: var(--primary-gold); font-family: monospace;">> Console Output</h3>
-        <button onclick="clearLogs()" class="btn btn-sm btn-outline"
-            style="padding: 0.2rem 0.5rem; font-size: 0.8rem;">Clear</button>
-    </div>
-    <div id="log-content" style="
-            font-family: monospace; 
-            color: #10b981; 
-            background: rgba(0,0,0,0.3); 
-            padding: 1rem; 
-            border-radius: 4px; 
-            max-height: 300px; 
-            overflow-y: auto; 
-            white-space: pre-wrap; 
-            font-size: 0.9rem;"></div>
-</div>
+<script>
+    function openTool(toolName) {
+        closeForms();
+        document.getElementById(toolName + '-form').style.display = 'block';
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
 
-</div>
-const statusArea = document.getElementById('status-area');
-const statusText = document.getElementById('status-text');
-const progressBar = document.getElementById('progress-bar');
-const previewArea = document.getElementById('preview-area');
-const videoPlayer = document.getElementById('video-player');
-const downloadLink = document.getElementById('download-link');
+    function closeForms() {
+        document.getElementById('scraper-form').style.display = 'none';
+        document.getElementById('adder-form').style.display = 'none';
+        document.getElementById('downloader-form').style.display = 'none';
+    }
 
-// Reset UI
-submitBtn.disabled = true;
-submitBtn.innerText = "Downloading...";
-statusArea.style.display = 'block';
-previewArea.style.display = 'none';
-progressBar.style.width = '30%'; // Fake progress start
-statusText.innerText = "Connecting to Telegram...";
+    function log(message, type = 'info') {
+        const container = document.getElementById('log-content');
+        const entry = document.createElement('div');
+        entry.className = `log-entry ${type}`;
+        entry.style.marginBottom = '4px';
+        entry.textContent = `> ${message}`;
 
-try {
-const response = await fetch('/api/tools/download', {
-method: 'POST',
-body: formData
-});
+        if (type === 'error') entry.style.color = '#ef4444';
+        if (type === 'success') entry.style.color = '#22c55e';
 
-const result = await response.json();
+        container.appendChild(entry);
+        container.scrollTop = container.scrollHeight;
+    }
 
-if (result.status === 'success') {
-progressBar.style.width = '100%';
-statusText.innerText = "Download Complete!";
+    function clearLogs() {
+        document.getElementById('log-content').innerHTML = '<div class="log-entry" style="color: #94a3b8;">Logs cleared.</div>';
+    }
 
-// Show Video
-previewArea.style.display = 'block';
-videoPlayer.src = result.file_path;
-videoPlayer.style.display = 'block';
-downloadLink.href = result.file_path;
-} else {
-statusText.innerText = "Error: " + result.message;
-progressBar.style.width = '0%';
-progressBar.style.background = 'red';
-}
+    async function readLogStream(response) {
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder("utf-8");
 
-} catch (error) {
-console.error('Error:', error);
-statusText.innerText = "Network Error Occurred.";
-} finally {
-submitBtn.disabled = false;
-submitBtn.innerText = "Download Video";
-}
-}
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            const chunk = decoder.decode(value, { stream: true });
+            const lines = chunk.split('\n');
+            for (const line of lines) {
+                if (line.trim()) {
+                    log(line.trim());
+                }
+            }
+        }
+    }
+
+    async function handleScrape(event) {
+        event.preventDefault();
+        const form = event.target;
+        const btn = document.getElementById('btn-scrape-submit');
+
+        log("Starting Scraper...", "info");
+        btn.disabled = true;
+        btn.textContent = "Scraping...";
+
+        try {
+            const formData = new FormData(form);
+            const response = await fetch('/api/tools/scrape', {
+                method: 'POST',
+                body: formData
+            });
+
+            await readLogStream(response);
+            log("Scrape session finished.", "success");
+
+        } catch (error) {
+            log(`Error: ${error.message}`, 'error');
+        } finally {
+            btn.disabled = false;
+            btn.textContent = "Start Scraping";
+        }
+    }
+
+    async function handleAdd(event) {
+        event.preventDefault();
+        const form = event.target;
+        const btn = document.getElementById('btn-add-submit');
+
+        log("Starting Add Members...", "info");
+        btn.disabled = true;
+        btn.textContent = "Adding...";
+
+        try {
+            const formData = new FormData(form);
+            const response = await fetch('/api/tools/add', {
+                method: 'POST',
+                body: formData
+            });
+
+            await readLogStream(response);
+            log("Add session finished.", "success");
+
+        } catch (error) {
+            log(`Error: ${error.message}`, 'error');
+        } finally {
+            btn.disabled = false;
+            btn.textContent = "Start Adding";
+        }
+    }
+
+    async function handleDownload(event) {
+        event.preventDefault();
+        const form = event.target;
+        const formData = new FormData(form);
+        const submitBtn = document.getElementById('btn-download-submit');
+        const statusArea = document.getElementById('status-area');
+        const statusText = document.getElementById('status-text');
+        const progressBar = document.getElementById('progress-bar');
+        const previewArea = document.getElementById('preview-area');
+        const videoPlayer = document.getElementById('video-player');
+        const downloadLink = document.getElementById('download-link');
+
+        // Reset UI
+        submitBtn.disabled = true;
+        submitBtn.innerText = "Downloading...";
+        statusArea.style.display = 'block';
+        previewArea.style.display = 'none';
+        progressBar.style.width = '30%'; // Fake progress start
+        statusText.innerText = "Connecting to Telegram...";
+
+        try {
+            const response = await fetch('/api/tools/download', {
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await response.json();
+
+            if (result.status === 'success') {
+                progressBar.style.width = '100%';
+                statusText.innerText = "Download Complete!";
+
+                // Show Video
+                previewArea.style.display = 'block';
+                videoPlayer.src = result.file_path;
+                videoPlayer.style.display = 'block';
+                downloadLink.href = result.file_path;
+            } else {
+                statusText.innerText = "Error: " + result.message;
+                progressBar.style.width = '0%';
+                progressBar.style.background = 'red';
+            }
+
+        } catch (error) {
+            console.error('Error:', error);
+            statusText.innerText = "Network Error Occurred.";
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerText = "Download Video";
+        }
+    }
 </script>
 {% endblock %}
