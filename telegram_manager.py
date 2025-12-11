@@ -17,7 +17,11 @@ class TelegramManager:
         self.api_hash = config.API_HASH
         self.phone = config.PHONE
         self.session_name = config.SESSION_NAME
-        self.client = TelegramClient(self.session_name, self.api_id, self.api_hash)
+        self.client = None
+        if self.api_id and self.api_hash:
+             self.client = TelegramClient(self.session_name, self.api_id, self.api_hash)
+        else:
+             print("Warning: API_ID or API_HASH missing. Telegram Client not initialized.")
         
         # Initialize Bot Client
         if config.BOT_TOKEN and config.BOT_TOKEN.lower() not in ['your_bot_token', 'none', '']:
@@ -65,7 +69,8 @@ class TelegramManager:
                 await event.respond(f"Hello {first_name}! I am the Apsara Helper Bot.\n\nI can help you manage your channel and download videos.")
 
     async def connect(self):
-        await self.client.connect()
+        if self.client:
+           await self.client.connect()
         # Bot is auto-started in init via .start(), but we can ensure it's running if needed, 
         # though .start() returns the client and runs it. 
         # For Telethon bot client, typically we run_until_disconnected in main, 
@@ -75,6 +80,8 @@ class TelegramManager:
             await self.bot.start(bot_token=config.BOT_TOKEN)
         
     async def is_authorized(self):
+        if not self.client:
+            return False
         return await self.client.is_user_authorized()
         
     async def send_code(self, phone):
