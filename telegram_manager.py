@@ -129,10 +129,18 @@ class TelegramManager:
                     try:
                         invite_prop = await self.client(CheckChatInviteRequest(invite_hash))
                         
-                        if hasattr(invite_prop, 'chat') and invite_prop.chat:
+                        # Debug logging
+                        if hasattr(invite_prop, 'chat'):
+                            print(f"DEBUG: invite_prop.chat type: {type(invite_prop.chat)}")
+                        if hasattr(invite_prop, 'channel'):
+                            print(f"DEBUG: invite_prop.channel type: {type(invite_prop.channel)}")
+
+                        if hasattr(invite_prop, 'chat') and invite_prop.chat and not isinstance(invite_prop.chat, bool):
                             target = invite_prop.chat
-                        elif hasattr(invite_prop, 'channel') and invite_prop.channel:
-                             target = invite_prop.channel
+                        elif hasattr(invite_prop, 'channel') and invite_prop.channel and not isinstance(invite_prop.channel, bool):
+                                target = invite_prop.channel
+                        else:
+                            print("DEBUG: invite_prop has no valid chat/channel or is bool.")
                         yield "Resolved via CheckChatInviteRequest."
                     except Exception as e:
                         print(f"CheckChatInviteRequest failed: {e}")
