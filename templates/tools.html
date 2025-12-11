@@ -88,6 +88,26 @@
         </div>
     </div>
 
+    <!-- Log Output Area -->
+    <div id="log-container" class="card"
+        style="margin-top: 2rem; display: none; background: #0f172a; border: 1px solid var(--primary-gold);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <h3 style="color: var(--primary-gold); font-family: monospace;">> Console Output</h3>
+            <button onclick="clearLogs()" class="btn btn-sm btn-outline"
+                style="padding: 0.2rem 0.5rem; font-size: 0.8rem;">Clear</button>
+        </div>
+        <div id="log-content" style="
+            font-family: monospace; 
+            color: #10b981; 
+            background: rgba(0,0,0,0.3); 
+            padding: 1rem; 
+            border-radius: 4px; 
+            max-height: 300px; 
+            overflow-y: auto; 
+            white-space: pre-wrap; 
+            font-size: 0.9rem;"></div>
+    </div>
+
 </div>
 
 <script>
@@ -96,6 +116,7 @@
         document.getElementById('tool-scraper').style.display = 'none';
         document.getElementById('tool-adder').style.display = 'none';
         document.getElementById('tool-downloader').style.display = 'none';
+        document.getElementById('log-container').style.display = 'none'; // Hide logs on switch
 
         // Reset buttons
         document.getElementById('btn-scraper').className = 'btn btn-outline';
@@ -104,6 +125,23 @@
 
         document.getElementById('tool-' + toolName).style.display = 'block';
         document.getElementById('btn-' + toolName).className = 'btn btn-primary';
+    }
+
+    function log(message, type = 'info') {
+        const container = document.getElementById('log-container');
+        const content = document.getElementById('log-content');
+        container.style.display = 'block';
+
+        const timestamp = new Date().toLocaleTimeString();
+        const color = type === 'error' ? '#ef4444' : (type === 'success' ? '#10b981' : '#cbd5e1');
+
+        content.innerHTML += `<div style="color: ${color}; margin-bottom: 4px;"><span style="opacity:0.5">[${timestamp}]</span> ${message}</div>`;
+        content.scrollTop = content.scrollHeight;
+    }
+
+    function clearLogs() {
+        document.getElementById('log-content').innerHTML = '';
+        document.getElementById('log-container').style.display = 'none';
     }
 
     async function handleScrape(event) {
@@ -125,8 +163,10 @@
 
             if (result.status === 'completed') {
                 showToast("Success", result.message, "success");
+                log(result.message, "success");
             } else {
                 showToast("Error", result.message || "Unknown error", "error");
+                log(result.message || "Unknown Error", "error");
             }
         } catch (error) {
             showToast("Error", "Network error occurred", "error");
@@ -154,13 +194,11 @@
             const result = await response.json();
 
             if (result.status === 'completed') {
-                // The result message from backend is multi-line, might be long.
-                // We'll show a summary toast and maybe detail in console or a separate modal if needed.
-                // For now, let's just show the success toast.
                 showToast("Task Completed", "Member addition finished.", "success");
-                console.log(result.message);
+                log(result.message, "success");
             } else {
                 showToast("Error", result.message || "Unknown error", "error");
+                log(result.message || "Unknown Error", "error");
             }
         } catch (error) {
             showToast("Error", "Network error occurred", "error");
