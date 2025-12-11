@@ -1,6 +1,7 @@
 from telethon import TelegramClient, events
 from telethon.tl.functions.channels import InviteToChannelRequest
 from telethon.tl.functions.messages import ImportChatInviteRequest, CheckChatInviteRequest
+from telethon.tl.types import InputPeerUser
 from telethon.errors import PhoneNumberInvalidError, PeerFloodError, UserPrivacyRestrictedError, FloodWaitError, UserAlreadyParticipantError
 import os
 import csv
@@ -157,15 +158,16 @@ class TelegramManager:
             filename = "data.csv"
             with open(filename, "w", encoding='UTF-8', newline='') as f:
                 writer = csv.writer(f, delimiter=",")
-                writer.writerow(['sr. no.', 'username', 'user id', 'name', 'Status']) # Header
+                writer.writerow(['sr. no.', 'username', 'user id', 'access_hash', 'name', 'Status']) # Header
                 
                 for i, user in enumerate(all_participants, start=1):
                     username = user.username if user.username else ""
                     first_name = user.first_name if user.first_name else ""
                     last_name = user.last_name if user.last_name else ""
                     name = (first_name + ' ' + last_name).strip()
+                    access_hash = getattr(user, 'access_hash', '')
                     
-                    writer.writerow([i, username, user.id, name, 'seen'])
+                    writer.writerow([i, username, user.id, access_hash, name, 'seen'])
             
             return f"Successfully scraped {len(all_participants)} members to {filename}."
         except Exception as e:
@@ -189,7 +191,14 @@ class TelegramManager:
                     user['srno'] = row[0]
                     user['username'] = row[1]
                     user['id'] = int(row[2])
-                    user['name'] = row[3]
+                    # Handle new csv format with access_hash
+                    if len(row) > 5:
+                        user['access_hash'] = row[3]
+                        user['name'] = row[4]
+                    else:
+                        # Old format support
+                        user['access_hash'] = None
+                        user['name'] = row[3]
                     users.append(user)
         except Exception as e:
             return f"Error reading CSV: {str(e)}"
@@ -211,8 +220,15 @@ class TelegramManager:
                     try:
                         user_to_add = user['username']
                         if not user['username']:
-                            # "No username, no moving to next" -> use ID
-                            user_to_add = user['id']
+                            # "No username, use ID + AccessHash"
+                            if user.get('access_hash'):
+                                try:
+                                    user_to_add = InputPeerUser(user['id'], int(user['access_hash']))
+                                except Exception:
+                                     # If hash is invalid string
+                                     user_to_add = user['id']
+                            else:
+                                user_to_add = user['id']
                         
                         logs.append(f"Adding {user['id']} (Username: {user['username'] or 'None'})")
                         
