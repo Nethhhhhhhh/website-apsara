@@ -301,9 +301,9 @@ class TelegramManager:
                             yield f"Flood Error ({getattr(e, 'seconds', 'unknown')}s)! Auto-Run Active. Waiting {wait_flood} seconds..."
                             await asyncio.sleep(wait_flood)
                             continue
-                        else:
-                            yield f"Getting Flood Error ({getattr(e, 'seconds', 'unknown')}s). Script is stopping now."
-                            break
+                    except (ChatWriteForbiddenError, ChatAdminRequiredError) as e:
+                        yield f"Skipping {user['id']}: Permission denied (Admin rights required)."
+                        continue
 
                     except UserPrivacyRestrictedError:
                          yield f"User {user['id']} has privacy restricted. Skipping."
