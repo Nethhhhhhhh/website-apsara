@@ -1,5 +1,6 @@
 from telethon import TelegramClient, events
 from telethon.tl.functions.channels import InviteToChannelRequest
+from telethon.tl.functions.messages import ImportChatInviteRequest, CheckChatInviteRequest
 from telethon.errors import PhoneNumberInvalidError, PeerFloodError, UserPrivacyRestrictedError
 import os
 import csv
@@ -100,11 +101,48 @@ class TelegramManager:
             # Handle full URLs: https://t.me/username/123 or https://t.me/username
             if "t.me/" in target:
                 import re
-                # Extract username from t.me/username...
-                # Ignore t.me/c/ for now as those are private IDs which get_participants might handle differently or need invite link
-                match = re.search(r"t\.me/([^/]+)", target)
-                if match and match.group(1) != 'c':
-                    target = match.group(1)
+                
+                # Check for Private Invite Link: t.me/+HASH or t.me/joinchat/HASH
+                invite_match = re.search(r"t\.me/(\+|joinchat/)([\w-]+)", target)
+                if invite_match:
+                    invite_hash = invite_match.group(2)
+                    try:
+                        # Check invite first
+                        invite = await self.client(CheckChatInviteRequest(invite_hash))
+                        # If we are already a participant, we can just get the entity
+                        # But CheckChatInviteRequest returns ChatInvite or ChatInviteAlready
+                        # We usually just try to Import it.
+                        await self.client(ImportChatInviteRequest(invite_hash))
+                    except Exception as e:
+                         # If already joined or other error, we try to proceed if we can resolve the entity via other means or if the error is "UserAlreadyParticipant"
+                         print(f"Invite Import Info: {e}")
+                    
+                    # After joining, we need to find the entity. 
+                    # The hash logic is complex to map back to entity ID directly without the Invite object context.
+                    # Best check dialogs or just catch the update. 
+                    # Simpler approach: CheckChatInviteRequest actually returns the chat info often.
+                    # For now, let's assume the user enters the logic and we rely on get_participants working if we are in.
+                    # WAIT: get_participants needs an input_peer. 
+                    # We need the entity. 
+                    
+                    # Refined Logic:
+                    try:
+                        invite_prop = await self.client(CheckChatInviteRequest(invite_hash))
+                        # invite_prop.chat is the Chat/Channel object
+                        # We can use this title to find it or use the object directly if compatible
+                        if hasattr(invite_prop, 'chat'):
+                            target = invite_prop.chat
+                        elif hasattr(invite_prop, 'channel'): # Depends on TL schema version
+                             target = invite_prop.channel
+                        # Fallback: if we just joined, it should be in dialogs. 
+                    except Exception:
+                        pass
+                else:
+                    # Extract username from t.me/username...
+                    # Ignore t.me/c/ for now as those are private IDs which get_participants might handle differently or need invite link
+                    match = re.search(r"t\.me/([^/]+)", target)
+                    if match and match.group(1) != 'c' and match.group(1) != '+':
+                        target = match.group(1)
             
             # aggressive=True is from user code
             all_participants = await self.client.get_participants(target, aggressive=True)
