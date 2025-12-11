@@ -302,7 +302,7 @@ class TelegramManager:
                             await asyncio.sleep(wait_flood)
                             continue
                     except (ChatWriteForbiddenError, ChatAdminRequiredError) as e:
-                        yield f"Skipping {user['id']}: Permission denied (Admin rights required)."
+                        yield f"Skipping {user['id']}: Permission denied."
                         continue
 
                     except UserPrivacyRestrictedError:
