@@ -1,7 +1,7 @@
 from telethon import TelegramClient, events
 from telethon.tl.functions.channels import InviteToChannelRequest
-from telethon.tl.functions.messages import ImportChatInviteRequest, CheckChatInviteRequest
-from telethon.tl.types import InputPeerUser
+from telethon.tl.functions.messages import ImportChatInviteRequest, CheckChatInviteRequest, AddChatUserRequest
+from telethon.tl.types import InputPeerUser, Chat, Channel
 from telethon.errors import PhoneNumberInvalidError, PeerFloodError, UserPrivacyRestrictedError, FloodWaitError, UserAlreadyParticipantError, ChatWriteForbiddenError, ChatAdminRequiredError
 import os
 import csv
@@ -267,10 +267,23 @@ class TelegramManager:
                         
                         yield f"Adding {user['id']} (Username: {user['username'] or 'None'})"
                         
-                        await self.client(InviteToChannelRequest(
-                            target_channel,
-                            [user_to_add]
-                        ))
+                        if isinstance(target_channel, Channel):
+                            await self.client(InviteToChannelRequest(
+                                target_channel,
+                                [user_to_add]
+                            ))
+                        elif isinstance(target_channel, Chat):
+                             await self.client(AddChatUserRequest(
+                                target_channel.id,
+                                user_to_add,
+                                fwd_limit=0  # Optional: limit previous messages seen
+                            ))
+                        else:
+                             # Default fallback if type isn't clear (e.g. InputPeer) - assume Channel/Supergroup
+                             await self.client(InviteToChannelRequest(
+                                target_channel,
+                                [user_to_add]
+                            ))
                         
                         # User requested safer wait time (15-180s) to avoid errors
                         wait_seconds = random.randint(15, 180)
