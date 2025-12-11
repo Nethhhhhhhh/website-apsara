@@ -502,8 +502,8 @@ async def api_scrape(target_group: str = Form(...)):
     return {"status": "completed", "message": result}
 
 @app.post("/api/tools/add")
-async def api_add(target_channel: str = Form(...), start_index: int = Form(1), end_index: int = Form(50)):
-    result = await telegram_bot.add_members(target_channel, start_index=start_index, end_index=end_index)
+async def api_add(target_channel: str = Form(...), start_index: int = Form(1), end_index: int = Form(50), auto_run: bool = Form(False)):
+    result = await telegram_bot.add_members(target_channel, start_index=start_index, end_index=end_index, auto_run=auto_run)
     return {"status": "completed", "message": result}
 
 @app.post("/api/tools/download")

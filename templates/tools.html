@@ -45,6 +45,11 @@
                     <label class="form-label">End Index</label>
                     <input type="number" name="end_index" class="form-input" value="50">
                 </div>
+                <div class="form-group" style="grid-column: span 2; display: flex; align-items: center; gap: 10px;">
+                    <input type="checkbox" name="auto_run" id="auto_run" style="width: auto;">
+                    <label for="auto_run" class="form-label" style="margin: 0; cursor: pointer;">Auto Run (Continue on
+                        Flood Error - Wait 30-180s)</label>
+                </div>
             </div>
             <button type="submit" id="btn-add-submit" class="btn btn-primary" style="width: 100%;">Start Adding</button>
         </form>
