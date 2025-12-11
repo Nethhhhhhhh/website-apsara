@@ -526,12 +526,12 @@ async def create_billing(amount: float = Form(2.00)):
     qr_string = khqr_utils.generate_local_khqr(amount=amount)
     
     # Expiration (10 minutes)
-    expires_at = datetime.now() + timedelta(minutes=10)
+    expires_at = datetime.utcnow() + timedelta(minutes=10)
     
     return {
         "status": "success",
         "qr_string": qr_string,
-        "expires_at": expires_at.isoformat(),
+        "expires_at": expires_at.isoformat() + "Z", # Force UTC interpretation
         "amount": amount
     }
 
