@@ -133,31 +133,6 @@ class TelegramManager:
                         except Exception as e:
                             print(f"ImportChatInviteRequest failed: {e}")
 
-                    # Strategy 3: Just try to Import anyway to ensure we are in, if Strategy 1 worked but we weren't in.
-                    # If target is ALREADY an entity (Strategy 1 success), we still need to JOIN if not joined.
-                    # But CheckChatInviteRequest usually tells us if we are joined? 
-                    # Actually CheckChatInvite returns ChatInvite (not joined) or ChatInviteAlready (joined).
-                    # If we have the entity, let's just make sure we are in.
-                    if not isinstance(target, str):
-                        try:
-                            # Try to import just in case we aren't members
-                            await self.client(ImportChatInviteRequest(invite_hash))
-                        except:
-                            pass # Already member or other error
-
-                else:
-                    # Extract username from t.me/username...
-                    # Ignore t.me/c/ for now as those are private IDs which get_participants might handle differently or need invite link
-                    match = re.search(r"t\.me/([^/]+)", target)
-                    if match and match.group(1) != 'c' and match.group(1) != '+':
-                        target = match.group(1)
-            
-            # aggressive=True is from user code
-            all_participants = await self.client.get_participants(target, aggressive=True)
-            
-            filename = "data.csv"
-            with open(filename, "w", encoding='UTF-8', newline='') as f:
-                writer = csv.writer(f, delimiter=",")
                 writer.writerow(['sr. no.', 'username', 'user id', 'access_hash', 'name', 'Status']) # Header
                 
                 for i, user in enumerate(all_participants, start=1):
