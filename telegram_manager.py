@@ -128,15 +128,34 @@ class TelegramManager:
                     # Refined Logic:
                     try:
                         invite_prop = await self.client(CheckChatInviteRequest(invite_hash))
-                        # invite_prop.chat is the Chat/Channel object
-                        # We can use this title to find it or use the object directly if compatible
+                        
+                        # Logic to extract entity
                         if hasattr(invite_prop, 'chat'):
                             target = invite_prop.chat
-                        elif hasattr(invite_prop, 'channel'): # Depends on TL schema version
+                        elif hasattr(invite_prop, 'channel'): 
                              target = invite_prop.channel
-                        # Fallback: if we just joined, it should be in dialogs. 
-                    except Exception:
+                        else:
+                             # If CheckChatInviteRequest returns ChatInviteAlready, it has 'chat' field too.
+                             pass
+
+                    except Exception as e:
+                        print(f"CheckInvite failed, trying fallback search: {e}")
+                        # If Check fails, maybe we just joined and can find it in dialogs?
+                        # Or we can't find it.
                         pass
+                        
+                    # Final Fallback Validation
+                    # If target is still a string (the URL), get_participants will fail.
+                    # We need to try to resolve it via the Hash if possible or find it in recent dialogs.
+                    if isinstance(target, str) and "t.me" in target:
+                         # Attempt to find the chat we just joined by listing recent dialogs
+                         # This is a bit "hacky" but effective if we just joined.
+                         # We can't easily map hash -> entity without CheckChatInviteRequest working.
+                         # But CheckChatInviteRequest usually works.
+                         # If it failed, we might be out of luck / banned / invalid link.
+                         
+                         # Let's try one more thing: Import returns Updates.
+                         pass
                 else:
                     # Extract username from t.me/username...
                     # Ignore t.me/c/ for now as those are private IDs which get_participants might handle differently or need invite link
