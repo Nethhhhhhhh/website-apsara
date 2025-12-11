@@ -498,23 +498,17 @@ async def tools_page(request: Request, db: Session = Depends(get_db)):
 @app.post("/api/tools/scrape")
 async def api_scrape(target_group: str = Form(...)):
     # Note: In a real app, pass the user to check permissions
-    result = await telegram_bot.scrape_members(target_group)
-    return {"status": "completed", "message": result}
+    async def event_generator():
+        async for log in telegram_bot.scrape_members(target_group):
+             yield f"{log}\n"
+    return StreamingResponse(event_generator(), media_type="text/plain")
 
 @app.post("/api/tools/add")
 async def api_add(target_channel: str = Form(...), start_index: int = Form(1), end_index: int = Form(50), auto_run: bool = Form(False)):
-    result = await telegram_bot.add_members(target_channel, start_index=start_index, end_index=end_index, auto_run=auto_run)
-    return {"status": "completed", "message": result}
-
-@app.post("/api/tools/download")
-async def api_download(link: str = Form(...)):
-    result = await telegram_bot.download_video(link)
-    return result
-
-# --- KHQR Billing System ---
-
-@app.get("/billing", response_class=HTMLResponse)
-async def billing_page(request: Request, db: Session = Depends(get_db)):
+    async def event_generator():
+        async for log in telegram_bot.add_members(target_channel, start_index=start_index, end_index=end_index, auto_run=auto_run):
+             yield f"{log}\n"
+    return StreamingResponse(event_generator(), media_type="text/plain")
     user = get_current_user(request, db)
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)

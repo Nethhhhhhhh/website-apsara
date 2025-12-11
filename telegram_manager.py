@@ -150,11 +150,13 @@ class TelegramManager:
 
     async def add_members(self, target_channel, start_index=1, end_index=50, auto_run=False):
         if not await self.client.is_user_authorized():
-            return "Not authorized. Please login first."
+            yield "Not authorized. Please login first."
+            return
             
         input_file = 'data.csv'
         if not os.path.exists(input_file):
-            return "data.csv not found. Please run Member Scraper first."
+            yield "data.csv not found. Please run Member Scraper first."
+            return
             
         users = []
         try:
@@ -176,9 +178,10 @@ class TelegramManager:
                         user['name'] = row[3]
                     users.append(user)
         except Exception as e:
-            return f"Error reading CSV: {str(e)}"
+            yield f"Error reading CSV: {str(e)}"
+            return
 
-        logs = []
+        yield f"Loaded {len(users)} users. Starting add process..."
         n = 0
         
         # User logic loop
@@ -187,9 +190,9 @@ class TelegramManager:
                 user_srno = int(user['srno'])
                 if start_index <= user_srno <= end_index:
                     n += 1
-                    # User logic: sleep every 50k - probably won't be hit in web context but keeping it
+                    # User logic: sleep every 50k
                     if n % 50000 == 0:
-                        logs.append("Added 50000 members, sleeping for 900 seconds...")
+                        yield "Added 50000 members, sleeping for 900 seconds..."
                         await asyncio.sleep(900)
                     
                     try:
@@ -205,7 +208,7 @@ class TelegramManager:
                             else:
                                 user_to_add = user['id']
                         
-                        logs.append(f"Adding {user['id']} (Username: {user['username'] or 'None'})")
+                        yield f"Adding {user['id']} (Username: {user['username'] or 'None'})"
                         
                         await self.client(InviteToChannelRequest(
                             target_channel,
@@ -214,49 +217,36 @@ class TelegramManager:
                         
                         # User requested safer wait time (15-180s) to avoid errors
                         wait_seconds = random.randint(15, 180)
-                        logs.append(f"Waiting {wait_seconds}s...")
+                        yield f"Waiting {wait_seconds}s..."
                         await asyncio.sleep(wait_seconds) 
                         
                     except (PeerFloodError, FloodWaitError) as e:
                         if auto_run:
-                            # Use random wait OR the required wait time (capped at user preference or handled)
-                            # User requested 30-180. If e.seconds is huge (24h), user's account is fried.
-                            # But let's respect the "don't stop" request.
-                            
                             wait_flood = random.randint(30, 180)
-                            
-                            # Optional: if it's a real FloodWaitError, maybe we should wait at least that long?
-                            # But user said "wait 30-180".
-                            # If we wait less than required, we'll just hit it again immediately.
-                            # Let's try to be smart: wait max(30, min(180, e.seconds)) if available?
-                            # PeerFloodError doesn't always have .seconds. FloodWaitError does.
                             
                             req_seconds = getattr(e, 'seconds', 0)
                             if req_seconds and req_seconds > 0:
-                                # If it requires e.g. 50s, we should wait 50s + small buffer.
-                                # If it requires 85000s, user's range of 180 is useless, but we will follow instructions.
-                                # Let's log the detail.
                                 pass
 
-                            logs.append(f"Flood Error ({getattr(e, 'seconds', 'unknown')}s)! Auto-Run Active. Waiting {wait_flood} seconds...")
+                            yield f"Flood Error ({getattr(e, 'seconds', 'unknown')}s)! Auto-Run Active. Waiting {wait_flood} seconds..."
                             await asyncio.sleep(wait_flood)
                             continue
                         else:
-                            logs.append(f"Getting Flood Error ({getattr(e, 'seconds', 'unknown')}s). Script is stopping now.")
+                            yield f"Getting Flood Error ({getattr(e, 'seconds', 'unknown')}s). Script is stopping now."
                             break
                     except UserPrivacyRestrictedError:
-                        logs.append("User privacy restricted. Skipping.")
+                         yield f"User {user['id']} has privacy restricted. Skipping."
                     except Exception as e:
                         # traceback.print_exc()
-                        logs.append(f"Unexpected Error adding {user['id']}: {str(e)}")
+                        yield f"Unexpected Error adding {user['id']}: {str(e)}"
                         continue
                 elif user_srno > end_index:
-                    logs.append("Reached end index.")
+                    yield "Reached end index."
                     break
             except ValueError:
                 continue
 
-        return "\n".join(logs)
+        yield "Process Completed."
 
     async def download_video(self, link):
         print(f"DEBUG: Attempting to download from link: {link}")
