@@ -1,7 +1,7 @@
 from telethon import TelegramClient, events
 from telethon.tl.functions.channels import InviteToChannelRequest
 from telethon.tl.functions.messages import ImportChatInviteRequest, CheckChatInviteRequest
-from telethon.errors import PhoneNumberInvalidError, PeerFloodError, UserPrivacyRestrictedError, FloodWaitError
+from telethon.errors import PhoneNumberInvalidError, PeerFloodError, UserPrivacyRestrictedError, FloodWaitError, UserAlreadyParticipantError
 import os
 import csv
 import asyncio
@@ -106,56 +106,44 @@ class TelegramManager:
                 invite_match = re.search(r"t\.me/(\+|joinchat/)([\w-]+)", target)
                 if invite_match:
                     invite_hash = invite_match.group(2)
-                    try:
-                        # Check invite first
-                        invite = await self.client(CheckChatInviteRequest(invite_hash))
-                        # If we are already a participant, we can just get the entity
-                        # But CheckChatInviteRequest returns ChatInvite or ChatInviteAlready
-                        # We usually just try to Import it.
-                        await self.client(ImportChatInviteRequest(invite_hash))
-                    except Exception as e:
-                         # If already joined or other error, we try to proceed if we can resolve the entity via other means or if the error is "UserAlreadyParticipant"
-                         print(f"Invite Import Info: {e}")
                     
-                    # After joining, we need to find the entity. 
-                    # The hash logic is complex to map back to entity ID directly without the Invite object context.
-                    # Best check dialogs or just catch the update. 
-                    # Simpler approach: CheckChatInviteRequest actually returns the chat info often.
-                    # For now, let's assume the user enters the logic and we rely on get_participants working if we are in.
-                    # WAIT: get_participants needs an input_peer. 
-                    # We need the entity. 
-                    
-                    # Refined Logic:
+                    # Strategy 1: Check Invite (Most reliable for getting entity)
                     try:
                         invite_prop = await self.client(CheckChatInviteRequest(invite_hash))
                         
-                        # Logic to extract entity
-                        if hasattr(invite_prop, 'chat'):
+                        if hasattr(invite_prop, 'chat') and invite_prop.chat:
                             target = invite_prop.chat
-                        elif hasattr(invite_prop, 'channel'): 
+                        elif hasattr(invite_prop, 'channel') and invite_prop.channel:
                              target = invite_prop.channel
-                        else:
-                             # If CheckChatInviteRequest returns ChatInviteAlready, it has 'chat' field too.
-                             pass
-
                     except Exception as e:
-                        print(f"CheckInvite failed, trying fallback search: {e}")
-                        # If Check fails, maybe we just joined and can find it in dialogs?
-                        # Or we can't find it.
-                        pass
-                        
-                    # Final Fallback Validation
-                    # If target is still a string (the URL), get_participants will fail.
-                    # We need to try to resolve it via the Hash if possible or find it in recent dialogs.
-                    if isinstance(target, str) and "t.me" in target:
-                         # Attempt to find the chat we just joined by listing recent dialogs
-                         # This is a bit "hacky" but effective if we just joined.
-                         # We can't easily map hash -> entity without CheckChatInviteRequest working.
-                         # But CheckChatInviteRequest usually works.
-                         # If it failed, we might be out of luck / banned / invalid link.
-                         
-                         # Let's try one more thing: Import returns Updates.
-                         pass
+                        print(f"CheckChatInviteRequest failed: {e}")
+
+                    # Strategy 2: If we didn't get target from Check (rare), try Join and get from Updates
+                    if isinstance(target, str): # Still a string means Strategy 1 failed to set entity
+                        try:
+                            updates = await self.client(ImportChatInviteRequest(invite_hash))
+                            if hasattr(updates, 'chats') and updates.chats:
+                                target = updates.chats[0]
+                        except UserAlreadyParticipantError:
+                            # We are already in, but Check failed? Weird.
+                            # Fallback: Try to find in dialogs? Or assumes the user provided a link we can't resolving.
+                            # But usually Check works even if joined.
+                            pass
+                        except Exception as e:
+                            print(f"ImportChatInviteRequest failed: {e}")
+
+                    # Strategy 3: Just try to Import anyway to ensure we are in, if Strategy 1 worked but we weren't in.
+                    # If target is ALREADY an entity (Strategy 1 success), we still need to JOIN if not joined.
+                    # But CheckChatInviteRequest usually tells us if we are joined? 
+                    # Actually CheckChatInvite returns ChatInvite (not joined) or ChatInviteAlready (joined).
+                    # If we have the entity, let's just make sure we are in.
+                    if not isinstance(target, str):
+                        try:
+                            # Try to import just in case we aren't members
+                            await self.client(ImportChatInviteRequest(invite_hash))
+                        except:
+                            pass # Already member or other error
+
                 else:
                     # Extract username from t.me/username...
                     # Ignore t.me/c/ for now as those are private IDs which get_participants might handle differently or need invite link
