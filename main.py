@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Request, Depends, HTTPException, Form, status, UploadFile, File
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from sqlalchemy.orm import Session
 from starlette.middleware.sessions import SessionMiddleware
 import database
@@ -509,6 +509,14 @@ async def api_add(target_channel: str = Form(...), start_index: int = Form(1), e
         async for log in telegram_bot.add_members(target_channel, start_index=start_index, end_index=end_index, auto_run=auto_run):
              yield f"{log}\n"
     return StreamingResponse(event_generator(), media_type="text/plain")
+
+@app.post("/api/tools/download")
+async def api_download(link: str = Form(...)):
+    result = await telegram_bot.download_video(link)
+    return result
+
+@app.get("/billing", response_class=HTMLResponse)
+async def billing_page(request: Request, db: Session = Depends(get_db)):
     user = get_current_user(request, db)
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)

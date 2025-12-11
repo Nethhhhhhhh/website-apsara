@@ -13,3 +13,4 @@ passlib[argon2]
 argon2-cffi
 bcrypt
 pyotp
+python-dotenv

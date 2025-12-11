@@ -20,7 +20,7 @@ class TelegramManager:
         self.client = TelegramClient(self.session_name, self.api_id, self.api_hash)
         
         # Initialize Bot Client
-        if config.BOT_TOKEN and config.BOT_TOKEN != 'YOUR_BOT_6TOKEN':
+        if config.BOT_TOKEN and config.BOT_TOKEN.lower() not in ['your_bot_token', 'none', '']:
             try:
                 self.bot = TelegramClient('apsara_bot', self.api_id, self.api_hash)
                 # We must start the bot, but not in __init__ as it returns a coroutine.
@@ -94,11 +94,20 @@ class TelegramManager:
             return False, str(e)
 
     async def scrape_members(self, target_group):
-        if not await self.client.is_user_authorized():
-            return "Not authorized. Please login first."
+        try:
+            authorized = await self.client.is_user_authorized()
+        except Exception as e:
+            yield f"Error checking authorization: {e}"
+            return
+
+        if not authorized:
+            yield "Not authorized. Please login first."
+            return
             
         try:
             target = target_group.strip()
+            yield f"Resolving target: {target}..."
+            
             # Handle full URLs: https://t.me/username/123 or https://t.me/username
             if "t.me/" in target:
                 import re
@@ -107,6 +116,7 @@ class TelegramManager:
                 invite_match = re.search(r"t\.me/(\+|joinchat/)([\w-]+)", target)
                 if invite_match:
                     invite_hash = invite_match.group(2)
+                    yield f"Detected invite link with hash: {invite_hash}"
                     
                     # Strategy 1: Check Invite (Most reliable for getting entity)
                     try:
@@ -116,23 +126,48 @@ class TelegramManager:
                             target = invite_prop.chat
                         elif hasattr(invite_prop, 'channel') and invite_prop.channel:
                              target = invite_prop.channel
+                        yield "Resolved via CheckChatInviteRequest."
                     except Exception as e:
                         print(f"CheckChatInviteRequest failed: {e}")
+                        yield f"CheckChatInviteRequest failed: {e}"
 
                     # Strategy 2: If we didn't get target from Check (rare), try Join and get from Updates
                     if isinstance(target, str): # Still a string means Strategy 1 failed to set entity
                         try:
+                            yield "Attempting to join via ImportChatInviteRequest..."
                             updates = await self.client(ImportChatInviteRequest(invite_hash))
                             if hasattr(updates, 'chats') and updates.chats:
                                 target = updates.chats[0]
+                            yield "Joined and resolved channel."
                         except UserAlreadyParticipantError:
+                            yield "Already a participant, limiting resolution options."
                             # We are already in, but Check failed? Weird.
                             # Fallback: Try to find in dialogs? Or assumes the user provided a link we can't resolving.
                             # But usually Check works even if joined.
                             pass
                         except Exception as e:
                             print(f"ImportChatInviteRequest failed: {e}")
+                            yield f"ImportChatInviteRequest failed: {e}"
+            
+            yield f"Fetching participants from {target}..."
+            # Now fetch participants
+            all_participants = []
+            try:
+                # Use iter_participants for better handling of large groups
+                async for user in self.client.iter_participants(target, aggressive=True):
+                    all_participants.append(user)
+                    if len(all_participants) % 100 == 0:
+                        yield f"Scraped {len(all_participants)} members so far..."
+            except Exception as e:
+                yield f"Error fetching participants: {e}"
+                if not all_participants:
+                     return
 
+            filename = "data.csv"
+            yield f"Writing {len(all_participants)} members to {filename}..."
+            
+            with open(filename, "w", encoding='UTF-8', newline='') as f:
+                writer = csv.writer(f, delimiter=",", lineterminator="\n")
                 writer.writerow(['sr. no.', 'username', 'user id', 'access_hash', 'name', 'Status']) # Header
                 
                 for i, user in enumerate(all_participants, start=1):
@@ -144,12 +179,19 @@ class TelegramManager:
                     
                     writer.writerow([i, username, user.id, access_hash, name, 'seen'])
             
-            return f"Successfully scraped {len(all_participants)} members to {filename}."
+            yield f"Successfully scraped {len(all_participants)} members to {filename}."
         except Exception as e:
-            return f"Error scraping: {str(e)}"
+            traceback.print_exc()
+            yield f"Error scraping: {str(e)}"
 
     async def add_members(self, target_channel, start_index=1, end_index=50, auto_run=False):
-        if not await self.client.is_user_authorized():
+        try:
+            authorized = await self.client.is_user_authorized()
+        except Exception as e:
+            yield f"Error checking authorization: {e}"
+            return
+
+        if not authorized:
             yield "Not authorized. Please login first."
             return
             
@@ -250,7 +292,13 @@ class TelegramManager:
 
     async def download_video(self, link):
         print(f"DEBUG: Attempting to download from link: {link}")
-        if not await self.client.is_user_authorized():
+        try:
+            authorized = await self.client.is_user_authorized()
+        except Exception as e:
+            print(f"DEBUG: Error checking authorization: {e}")
+            return {"status": "error", "message": f"Connection Error: {e}"}
+
+        if not authorized:
             print("DEBUG: User not authorized")
             return {"status": "error", "message": "Not authorized. Please login first."}
 
