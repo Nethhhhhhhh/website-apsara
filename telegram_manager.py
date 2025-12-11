@@ -237,7 +237,10 @@ class TelegramManager:
                             [user_to_add]
                         ))
                         
-                        await asyncio.sleep(random.randint(5, 10)) 
+                        # User requested safer wait time (15-180s) to avoid errors
+                        wait_seconds = random.randint(15, 180)
+                        logs.append(f"Waiting {wait_seconds}s...")
+                        await asyncio.sleep(wait_seconds) 
                         
                     except (PeerFloodError, FloodWaitError) as e:
                         if auto_run:
