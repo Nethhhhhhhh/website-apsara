@@ -2,7 +2,7 @@ from telethon import TelegramClient, events
 from telethon.tl.functions.channels import InviteToChannelRequest
 from telethon.tl.functions.messages import ImportChatInviteRequest, CheckChatInviteRequest
 from telethon.tl.types import InputPeerUser
-from telethon.errors import PhoneNumberInvalidError, PeerFloodError, UserPrivacyRestrictedError, FloodWaitError, UserAlreadyParticipantError
+from telethon.errors import PhoneNumberInvalidError, PeerFloodError, UserPrivacyRestrictedError, FloodWaitError, UserAlreadyParticipantError, ChatWriteForbiddenError, ChatAdminRequiredError
 import os
 import csv
 import asyncio
@@ -291,6 +291,10 @@ class TelegramManager:
                         else:
                             yield f"Getting Flood Error ({getattr(e, 'seconds', 'unknown')}s). Script is stopping now."
                             break
+                    except (ChatWriteForbiddenError, ChatAdminRequiredError) as e:
+                        yield f"Permission Error: You do not have permission to add members to this chat. Ensure you are an Admin. Error: {e}"
+                        yield "Aborting process due to permission restrictions."
+                        break
                     except UserPrivacyRestrictedError:
                          yield f"User {user['id']} has privacy restricted. Skipping."
                     except Exception as e:
