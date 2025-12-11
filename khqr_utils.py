@@ -1,4 +1,9 @@
-import crcmod
+import config
+
+try:
+    import crcmod
+except ImportError:
+    crcmod = None
 
 class KHQR:
     def __init__(self, currency='USD'):
@@ -35,10 +40,26 @@ class KHQR:
         self.payload['53'] = currency_code
 
     def _generate_crc16(self, data_str):
-        # CRC-16-CCITT (0xFFFF)
-        # Poly: 0x1021 (Normal poly, crcmod often takes 0x11021 to include high bit)
-        crc16 = crcmod.mkCrcFun(0x11021, initCrc=0xFFFF, rev=False, xorOut=0x0000)
-        return hex(crc16(data_str.encode('utf-8')))[2:].upper().zfill(4)
+        if crcmod:
+            try:
+                # CRC-16-CCITT (0xFFFF)
+                crc16 = crcmod.mkCrcFun(0x11021, initCrc=0xFFFF, rev=False, xorOut=0x0000)
+                return hex(crc16(data_str.encode('utf-8')))[2:].upper().zfill(4)
+            except Exception:
+                pass
+        
+        # Pure Python Fallback (CCITT-False)
+        crc = 0xFFFF
+        for char in data_str:
+            byte = ord(char)
+            crc ^= (byte << 8)
+            for _ in range(8):
+                if (crc & 0x8000):
+                    crc = (crc << 1) ^ 0x1021
+                else:
+                    crc = crc << 1
+            crc &= 0xFFFF
+        return hex(crc)[2:].upper().zfill(4)
 
     def generate_string(self):
         # Sort keys
@@ -59,8 +80,8 @@ class KHQR:
 def generate_local_khqr(amount=1.00, currency='USD'):
     # Default to generic Bakong merchant for interoperability
     qr = KHQR(currency=currency)
-    # Using generic Bakong global ID for compatibility
-    qr.set_merchant("bakong@bakong", "086999911") 
-    qr.set_merchant_name("NOY PHANNITH")
+    # Use Configured Merchant Info
+    qr.set_merchant(config.KHQR_GLOBAL_ID, config.KHQR_MERCHANT_ID) 
+    qr.set_merchant_name(config.KHQR_MERCHANT_NAME)
     qr.set_amount(amount)
     return qr.generate_string()

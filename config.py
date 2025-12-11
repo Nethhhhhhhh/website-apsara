@@ -11,4 +11,7 @@ BOT_TOKEN = '8207251826:AAEILrQblxB2i7eLRX10GCUlBW2-pgz52Ak'
 BOT_USERNAME = '@mikitafinderbot' # e.g. MyApsaraBot
 
 # Security
-SECRET_KEY = 'super_secret_fixed_key_for_development'
+# KHQR Payment Settings
+KHQR_GLOBAL_ID = 'phannith@bkrt'
+KHQR_MERCHANT_ID = '85587991194' # Phone/Account without +
+KHQR_MERCHANT_NAME = 'NOY PHANNITH'
